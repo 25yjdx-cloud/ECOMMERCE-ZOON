@@ -97,3 +97,10 @@ PHP version 8.4.14 (/usr/local/bin/php)
 ```
 
 **النتيجة:** `BLOCKED` — الصورة المسحوبة لا تطابق PHP 8.3 المثبت في ADR-023. لم يُنفذ `composer create-project` أو تثبيت API أو أوامر Artisan، ولم يُنشأ `backend/bagisto`. يلزم اعتماد صورة PHP 8.3/Composer 2 مثبتة، أو قرار مالك بتعديل ADR-023 قبل المتابعة. لم يبدأ أي container لقاعدة بيانات.
+
+### مرشح صورة بديل — تحقق registry ومصدر البناء، 2026-11-18
+
+- يعرض Docker Hub الوسم `composer:2.8.2` كوسم نشط، وآخر نشر مسجل له 2024-11-14: [بيانات الوسم](https://hub.docker.com/v2/repositories/library/composer/tags/2.8.2).
+- سجل الصورة الرسمي يربط الوسم بمصدر بناء محدد: [تغيير إصدار Composer 2.8.2](https://github.com/docker-library/official-images/commit/f8057ea472fe1863623a3ad12a906811e4f2186c) و[Dockerfile عند commit البناء](https://github.com/composer/docker/blob/327b1e8184e42fdb25262da9617a8c236eeed82c/latest/Dockerfile)، الذي يبدأ من `php:8-alpine` ويثبت Composer `2.8.2`.
+- تاريخ النشر أسبق من تحديث إصدار PHP 8.4.0 في مستودع PHP بتاريخ 2024-11-19: [PHP 8.4.0 source commit](https://github.com/php/php-src/commit/b437f2b32eb364c9496d24abcc734272e5c9c980). لذلك `composer:2.8.2` مرشح محتمل لـ PHP 8.3، وليس إثباتًا لنسخة PHP الفعلية.
+- لم يُسحب هذا الوسم ولم يُفحص تشغيله؛ يلزم إذن المالك قبل السحب، ثم يجب التحقق من `php -v` و`composer --version` قبل أي إنشاء.

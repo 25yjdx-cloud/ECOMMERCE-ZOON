@@ -207,3 +207,10 @@ docker run --rm -v "$PWD:/app" -w /app composer:2.8.12 create-project bagisto/ba
 - الفحص داخل الصورة أعاد PHP `8.4.14` وComposer `2.8.12`؛ لذلك لا تطابق الصورة تثبيت PHP `8.3` في هذا القرار.
 - **B1: BLOCKED** — لم يُنفذ أمر الإنشاء. لم يُنفذ Composer require أو أوامر API Artisan ولم يُفحص `php -m`.
 - لا يتغير تثبيت PHP في هذا ADR دون قرار/ADR جديد. يلزم من المالك اعتماد صورة مثبتة توفر PHP 8.3 وComposer 2، أو الموافقة على تعديل قرار الإصدار. قاعدة البيانات لم تُشغّل؛ اختيارها ما زال مطلوبًا قبل B4.
+
+### مرشح صورة للتحقق بعد موافقة المالك — 2026-11-18
+
+- الوسم `composer:2.8.2` موجود ونشط في Docker Hub، وآخر نشر مسجل 2024-11-14: [Docker Hub tag metadata](https://hub.docker.com/v2/repositories/library/composer/tags/2.8.2).
+- مصدر الصورة الرسمي يحدد `FROM php:8-alpine` و`COMPOSER_VERSION 2.8.2`: [official-images release commit](https://github.com/docker-library/official-images/commit/f8057ea472fe1863623a3ad12a906811e4f2186c) و[Dockerfile source commit](https://github.com/composer/docker/blob/327b1e8184e42fdb25262da9617a8c236eeed82c/latest/Dockerfile).
+- تاريخ الوسم يسبق تحديث PHP 8.4.0 في مصدر PHP بتاريخ 2024-11-19: [PHP source commit](https://github.com/php/php-src/commit/b437f2b32eb364c9496d24abcc734272e5c9c980). هذا يجعله مرشحًا محتملًا لبيئة PHP 8.3، لكنه لا يثبت النسخة داخل الصورة دون تشغيلها.
+- لم تُسحب `composer:2.8.2`. يلزم إذن المالك قبل سحبها وفحص PHP وComposer، ولا ينفذ إنشاء المشروع إلا بعد نجاح الفحص.
