@@ -214,3 +214,9 @@ docker run --rm -v "$PWD:/app" -w /app composer:2.8.12 create-project bagisto/ba
 - مصدر الصورة الرسمي يحدد `FROM php:8-alpine` و`COMPOSER_VERSION 2.8.2`: [official-images release commit](https://github.com/docker-library/official-images/commit/f8057ea472fe1863623a3ad12a906811e4f2186c) و[Dockerfile source commit](https://github.com/composer/docker/blob/327b1e8184e42fdb25262da9617a8c236eeed82c/latest/Dockerfile).
 - تاريخ الوسم يسبق تحديث PHP 8.4.0 في مصدر PHP بتاريخ 2024-11-19: [PHP source commit](https://github.com/php/php-src/commit/b437f2b32eb364c9496d24abcc734272e5c9c980). هذا يجعله مرشحًا محتملًا لبيئة PHP 8.3، لكنه لا يثبت النسخة داخل الصورة دون تشغيلها.
 - لم تُسحب `composer:2.8.2`. يلزم إذن المالك قبل سحبها وفحص PHP وComposer، ولا ينفذ إنشاء المشروع إلا بعد نجاح الفحص.
+
+### نتيجة الفحص التشغيلي للمرشح — 2026-11-18
+
+- وافق المالك على سحب `composer:2.8.2` للتحقق فقط. أظهر `php -v` إصدار `8.3.13` وأظهر `composer --version` إصدار `2.8.2`؛ digest الصورة `sha256:12cd736fa74a5ed126b1fe11dc3695380e445b46a4ec7de53203c275d792ead0`.
+- أظهر `php -m` غياب `calendar`, `intl`, `pdo_mysql`, `gd`, و`bcmath` من الصورة. لذلك لا تستخدم هذه الصورة مباشرةً لإنشاء Bagisto أو لتلبية فحص امتدادات التطبيق.
+- لم يُنفذ `composer create-project` أو تثبيت API. B1 وB2 وB3 ما زالت غير مكتملة؛ يلزم تحديد صورة/بيئة PHP 8.3 وComposer 2 مناسبة وتأكيد امتداداتها قبل الاستمرار.

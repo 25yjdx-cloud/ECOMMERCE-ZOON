@@ -104,3 +104,25 @@ PHP version 8.4.14 (/usr/local/bin/php)
 - سجل الصورة الرسمي يربط الوسم بمصدر بناء محدد: [تغيير إصدار Composer 2.8.2](https://github.com/docker-library/official-images/commit/f8057ea472fe1863623a3ad12a906811e4f2186c) و[Dockerfile عند commit البناء](https://github.com/composer/docker/blob/327b1e8184e42fdb25262da9617a8c236eeed82c/latest/Dockerfile)، الذي يبدأ من `php:8-alpine` ويثبت Composer `2.8.2`.
 - تاريخ النشر أسبق من تحديث إصدار PHP 8.4.0 في مستودع PHP بتاريخ 2024-11-19: [PHP 8.4.0 source commit](https://github.com/php/php-src/commit/b437f2b32eb364c9496d24abcc734272e5c9c980). لذلك `composer:2.8.2` مرشح محتمل لـ PHP 8.3، وليس إثباتًا لنسخة PHP الفعلية.
 - لم يُسحب هذا الوسم ولم يُفحص تشغيله؛ يلزم إذن المالك قبل السحب، ثم يجب التحقق من `php -v` و`composer --version` قبل أي إنشاء.
+
+### نتيجة فحص المرشح بعد موافقة المالك — 2026-11-18
+
+وافق المالك على سحب `composer:2.8.2` للفحص فقط. مخرجات الأوامر:
+
+```text
+docker pull composer:2.8.2
+Status: Downloaded newer image for composer:2.8.2
+docker.io/library/composer:2.8.2
+Digest: sha256:12cd736fa74a5ed126b1fe11dc3695380e445b46a4ec7de53203c275d792ead0
+
+docker run --rm composer:2.8.2 php -v
+PHP 8.3.13 (cli) (built: Nov 12 2024 02:08:18) (NTS)
+
+docker run --rm composer:2.8.2 composer --version
+Composer version 2.8.2 2024-10-29 16:12:11
+PHP version 8.3.13 (/usr/local/bin/php)
+```
+
+`docker run --rm composer:2.8.2 php -m` أظهر أن الإضافات التالية من متطلبات Bagisto غير متوفرة في الصورة: `calendar`, `intl`, `pdo_mysql`, `gd`, `bcmath`. الإضافات `curl`, `mbstring`, `openssl`, `PDO`, `tokenizer`, `dom`, `fileinfo`, `filter`, `hash`, `json`, `pcre`, `session`, `xml`, `SimpleXML`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, `iconv`, `libxml` ظهرت في القائمة.
+
+**النتيجة:** الصورة تحقق PHP 8.3 وComposer 2، لكنها ليست بيئة مثبتة ومكتملة لمتطلبات Bagisto. لم يُنفذ `composer create-project` ولم تُثبت إضافات داخلها. B1 ما زال محجوبًا إلى اعتماد بيئة مناسبة؛ فحص الامتدادات هنا للمرشح فقط وليس فحص صورة التطبيق المعتمدة لبقية B3.
