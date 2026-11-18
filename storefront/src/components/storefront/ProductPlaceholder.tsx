@@ -1,4 +1,5 @@
 import type { MockLocale, MockProduct } from "@/mock/types";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
 type ProductPlaceholderProps = {
   locale: MockLocale;
@@ -23,6 +24,7 @@ export function ProductPlaceholder({ locale, product }: ProductPlaceholderProps)
         <h3>{product.name[locale]}</h3>
         <p>{product.description[locale]}</p>
         <strong>{product.price.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")} {isArabic ? "ج.م" : "EGP"}</strong>
+        <AddToCartButton locale={locale} product={product} />
       </div>
     </article>
   );

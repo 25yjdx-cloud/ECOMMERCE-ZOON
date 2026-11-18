@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CartSummaryLink } from "@/components/cart/CartSummaryLink";
 import { LocaleSwitch } from "./LocaleSwitch";
 
 type SiteHeaderProps = {
@@ -17,6 +18,7 @@ export function SiteHeader({ locale, basePath, storeName }: SiteHeaderProps) {
         <span>{storeName ?? "CommerceForge"}</span>
       </Link>
       <nav aria-label={isArabic ? "التنقل الرئيسي" : "Main navigation"} className="header-links">
+        {storeName && <CartSummaryLink locale={locale} />}
         <Link className="text-link" href="/gallery">{isArabic ? "كل القوالب" : "All presets"}</Link>
         <LocaleSwitch locale={locale} basePath={basePath} />
       </nav>
