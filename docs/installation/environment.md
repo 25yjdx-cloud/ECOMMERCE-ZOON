@@ -126,3 +126,85 @@ PHP version 8.3.13 (/usr/local/bin/php)
 `docker run --rm composer:2.8.2 php -m` أظهر أن الإضافات التالية من متطلبات Bagisto غير متوفرة في الصورة: `calendar`, `intl`, `pdo_mysql`, `gd`, `bcmath`. الإضافات `curl`, `mbstring`, `openssl`, `PDO`, `tokenizer`, `dom`, `fileinfo`, `filter`, `hash`, `json`, `pcre`, `session`, `xml`, `SimpleXML`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, `iconv`, `libxml` ظهرت في القائمة.
 
 **النتيجة:** الصورة تحقق PHP 8.3 وComposer 2، لكنها ليست بيئة مثبتة ومكتملة لمتطلبات Bagisto. لم يُنفذ `composer create-project` ولم تُثبت إضافات داخلها. B1 ما زال محجوبًا إلى اعتماد بيئة مناسبة؛ فحص الامتدادات هنا للمرشح فقط وليس فحص صورة التطبيق المعتمدة لبقية B3.
+
+### Phase B1 — بناء صورة PHP 8.3 — 2026-11-18
+
+مصادر المتطلبات:
+
+- [متطلبات Bagisto الرسمية وإضافات PHP](https://devdocs.bagisto.com/getting-started/before-you-start.html#php-extensions).
+- [توقيع SHA-384 الرسمي لمثبت Composer](https://composer.github.io/installer.sig): `c8b085408188070d5f52bcfe4ecfbee5f727afa458b2573b8eaaf77b3419b0bf2768dc67c86944da1544f06fa544fd47`.
+
+الوسم `php:8.3-cli` فُحص قبل السحب، وأُجيز سحب digest منصة amd64 التالي:
+
+```text
+sha256:48ed67e99726bbccd8ea1ce741dcf6b202263ad74bf70834a600fc37e401279e
+```
+
+أُضيف [Dockerfile](../../backend/docker/php/Dockerfile) بصورة أساس مثبتة بالـ digest، وإضافات PHP عبر `docker-php-ext-install`، ومثبت Composer 2.8.12 بعد التحقق من توقيع SHA-384 الرسمي.
+
+الأوامر ونتائج التحقق:
+
+```text
+docker pull --platform=linux/amd64 php:8.3-cli@sha256:48ed67e99726bbccd8ea1ce741dcf6b202263ad74bf70834a600fc37e401279e
+Digest: sha256:48ed67e99726bbccd8ea1ce741dcf6b202263ad74bf70834a600fc37e401279e
+Status: Downloaded newer image
+
+docker build --platform=linux/amd64 -t cf-php-bagisto:8.3 backend/docker/php
+#6 /tmp/composer-setup.php: OK
+#6 Composer (version 2.8.12) successfully installed to: /usr/local/bin/composer
+#7 DONE — image exported and tagged as cf-php-bagisto:8.3
+
+docker run --rm cf-php-bagisto:8.3 php -v
+PHP 8.3.36 (cli) (built: Nov  5 2026 07:26:18) (NTS)
+
+docker run --rm cf-php-bagisto:8.3 composer --version
+Composer version 2.8.12 2025-09-19 13:41:59
+PHP version 8.3.36 (/usr/local/bin/php)
+
+docker run --rm cf-php-bagisto:8.3 php -m
+bcmath
+calendar
+Core
+ctype
+curl
+date
+dom
+fileinfo
+filter
+gd
+hash
+iconv
+intl
+json
+libxml
+mbstring
+mysqlnd
+openssl
+pcre
+PDO
+pdo_mysql
+pdo_sqlite
+Phar
+posix
+random
+readline
+Reflection
+session
+SimpleXML
+sodium
+SPL
+sqlite3
+standard
+tokenizer
+xml
+xmlreader
+xmlwriter
+Zend OPcache
+zip
+zlib
+
+extension assertion
+PASS: all 26 required PHP extensions are loaded.
+```
+
+**الحالة:** B1 مكتمل ومتحقق. لم يُنشأ `backend/bagisto`، ولم يُشغّل Composer لإنشاء مشروع، ولم تُثبت API، ولم تبدأ قاعدة بيانات. الخطوة التالية B2 لا تبدأ إلا بعد تأكيد المالك.
