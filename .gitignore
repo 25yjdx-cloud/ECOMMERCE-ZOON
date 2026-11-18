@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and generated output
+node_modules/
+vendor/
+.next/
+out/
+dist/
+build/
+coverage/
+
+# Logs, caches, and local editor files
+*.log
+.cache/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local database and backup artifacts
+*.sqlite
+*.sqlite3
+deployment/backups/*
+!deployment/backups/.gitkeep
+!deployment/backups/README.md
