@@ -1,0 +1,4 @@
+The original global stylesheet and preset-specific theme configuration were moved here before introducing shared design tokens.
+The original home, gallery, preset card, and preview route sources are also preserved in this archive.
+The previous StorePreview implementation remains available in the pre-redesign local commit 661bf6f.
+The registry, fixtures, and cart calculations remain part of the active application.
