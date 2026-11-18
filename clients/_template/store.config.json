@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "client": { "slug": "SLUG", "internalName": "Client name (internal use only)" },
+  "store": {
+    "name": { "ar": "اسم المتجر", "en": "Store Name" },
+    "tagline": { "ar": "", "en": "" },
+    "preset": "fashion",
+    "defaultLocale": "ar",
+    "locales": ["ar", "en"],
+    "currency": "EGP"
+  },
+  "branding": {
+    "logo": { "default": "logo.svg", "dark": "" },
+    "favicon": "favicon.png",
+    "colors": {
+      "primary": "#2563EB",
+      "secondary": "#111827",
+      "background": "#FFFFFF",
+      "text": "#111827",
+      "accent": "#F59E0B"
+    },
+    "fonts": { "heading": "Cairo", "body": "Cairo" }
+  },
+  "contact": {
+    "phone": "",
+    "whatsapp": "",
+    "email": "",
+    "address": { "ar": "", "en": "" }
+  },
+  "social": { "facebook": "", "instagram": "", "tiktok": "", "youtube": "" },
+  "navigation": {
+    "header": [
+      { "label": { "ar": "الرئيسية", "en": "Home" }, "href": "/" },
+      { "label": { "ar": "المنتجات", "en": "Products" }, "href": "/products" }
+    ],
+    "footer": [
+      { "label": { "ar": "من نحن", "en": "About us" }, "href": "/pages/about" },
+      { "label": { "ar": "سياسة الاسترجاع", "en": "Return policy" }, "href": "/pages/returns" }
+    ]
+  },
+  "home": {
+    "sections": [
+      { "id": "hero", "enabled": true },
+      { "id": "featuredCategories", "enabled": true },
+      { "id": "bestSellers", "enabled": true },
+      { "id": "newArrivals", "enabled": true },
+      { "id": "promoBanners", "enabled": false },
+      { "id": "newsletter", "enabled": true }
+    ]
+  },
+  "seo": {
+    "titleTemplate": "%s | Store Name",
+    "description": { "ar": "", "en": "" },
+    "ogImage": "og.png"
+  }
+}

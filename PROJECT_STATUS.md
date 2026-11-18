@@ -6,7 +6,7 @@
 
 | البند | الحالة الحالية |
 |---|---|
-| المرحلة الحالية | Phase 0 — تدقيق المستودع ومراجعة التأسيس |
+| المرحلة الحالية | Phase 1 — Architecture Foundation |
 | الحالة العامة | `IN_PROGRESS` |
 | التطبيقات التشغيلية | `NOT_STARTED` |
 | Backend Laravel/Bagisto | `NOT_STARTED`؛ لم يثبت Bagisto |
@@ -16,7 +16,7 @@
 | الاختبارات | `NOT_STARTED`؛ لم تُنفذ اختبارات تطبيقية أو قبول |
 | Meta Ads | `NOT_STARTED` |
 | GitHub | `IMPLEMENTED`؛ المجلد مربوط بـ `origin/main` والرفع الأول موجود |
-| بيئة التطوير | Docker وWSL2/Ubuntu متوفران؛ التحقق الكامل من الأدوات والإصدارات `IN_PROGRESS` |
+| بيئة التطوير | WSL2/Ubuntu وNode.js 22.23.5 LTS متوفرة؛ Docker Desktop غير قادر على تشغيل Engine |
 
 ## معاني الحالات
 
@@ -31,7 +31,7 @@
 
 ### Phase 0 — Full Repository Audit
 
-**الحالة: `IN_PROGRESS`**
+**الحالة: `IMPLEMENTED` — اكتمل التدقيق الأولي ووافق المالك على بدء التأسيس**
 
 - `IMPLEMENTED` — مراجعة هيكل الملفات والوثائق الموجودة.
 - `IMPLEMENTED` — توثيق اتجاه المشروع والعزل ونموذج تسليم العملاء.
@@ -39,17 +39,20 @@
 - `IMPLEMENTED` — توثيق الاستراتيجية في `docs/architecture/commerceforge-strategy.md`.
 - `IMPLEMENTED` — ربط ملفات المعمارية وسجل القرارات وREADME بوثيقة الاستراتيجية.
 - `IMPLEMENTED` — التحقق من توفر Docker وWSL2/Ubuntu على جهاز التطوير.
-- `IN_PROGRESS` — استكمال جرد البيئة ومصفوفة إصدارات PHP وComposer وNode.js وMySQL والتبعيات.
-- `BLOCKED` — اعتماد إصدارات Laravel/Bagisto/PHP وتثبيتها؛ Bagisto غير مسجل أو مثبت حتى الآن.
-- `NOT_STARTED` — إعداد تقرير تدقيق نهائي شامل بعد حسم النواقص البيئية.
+- `VERIFIED` — اعتماد مجموعة Bagisto 2.4.10 وAPI 2.4.4 وLaravel 12 وPHP 8.3 بناءً على manifests الرسمية.
+- `VERIFIED` — مراجعة توافق API مع Bagisto 2.4.10 ومتطلبات قاعدة البيانات الموثقة.
+- `IN_PROGRESS` — توثيق بوابة دعم MySQL 8.0 الرسمية وتسجيل مصدرها قبل تشغيل قاعدة البيانات.
+- `IMPLEMENTED` — إضافة [ADR-023](docs/decisions/ADR-023-backend-stack.md) وتسجيل مصدر التوافق ونتائج التحقق.
+- `IMPLEMENTED` — تحديث مصفوفة البيئة والأوامر بعد تصحيح مسار وجهة Composer.
+- `NOT_STARTED` — إعداد تقرير تدقيق نهائي شامل بعد جاهزية البيئة.
 - `NOT_STARTED` — اعتماد نطاق ومعايير اختبارات القبول.
-- `NOT_STARTED` — الحصول على موافقة صريحة للانتقال إلى التنفيذ.
+- `IMPLEMENTED` — موافقة المستخدم على بدء تجهيز المشروع.
 
 **قيد Phase 0:** لا تثبيتات أو ترقية تبعيات أو تغييرات تشغيلية أو حذف ملفات أو ترحيل قواعد بيانات قبل موافقة المستخدم.
 
 ### Phase 1 — Architecture Foundation
 
-**الحالة: `BLOCKED` — ينتظر اكتمال Phase 0 وموافقة المستخدم**
+**الحالة: `IN_PROGRESS` — تمت الموافقة؛ التثبيت محجوب بجاهزية Docker Engine**
 
 - اعتماد الهيكل النهائي دون نقل الملفات لمجرد مطابقة رسم مقترح.
 - اعتماد مصفوفة إصدارات متوافقة لـ PHP وLaravel وBagisto وNode.js وNext.js وReact وMySQL.
@@ -59,6 +62,9 @@
 - اعتماد إدارة الإعدادات والأسرار وملفات البيئة.
 - اعتماد حدود المصادقة والصلاحيات وعزل نشر كل عميل.
 - توثيق قرارات المعمارية والاختبارات التأسيسية.
+- `BLOCKED` — Docker Desktop يعرض `Docker Desktop is unable to start`؛ يلزم تحديث/فحص WSL kernel ثم إعادة تشغيله والتحقق بـ `docker info`.
+- `BLOCKED` — تثبيت Bagisto وAPI داخل الحاوية بعد تشغيل Docker والتحقق النهائي من دورة دعم MySQL.
+- `VERIFIED` — تثبيت Node.js 22.23.5 LTS وnpm 10.9.9 داخل Ubuntu عبر nvm؛ مساراتهما من `~/.nvm/versions/node/` في shell جديد.
 
 ### Phase 2 — لوحة إدارة متجر العميل
 
@@ -201,3 +207,43 @@
 ## آخر تحديث
 
 أُضيفت وثيقة الاستراتيجية وسجل القوالب الرسمي، ورُبط المستودع المحلي بمستودع GitHub على `main`. التغييرات الحالية في هذا الملف لا تعني أنها رُفعت إلى GitHub؛ يلزم commit وpush منفصلان عند طلب ذلك.
+
+## تحديث بوابات ADR-023 والتحضير — 2026-11-18
+
+هذه إضافة مؤرخة لحفظ آخر الأدلة دون حذف الحالة السابقة. لا Bagisto أو Laravel أو PHP أو MySQL أو Next.js project موجود حتى هذا التحديث. اختبارات القبول ما زالت **0 من 17**، ولم يُسجل أي اختبار كناجح.
+
+| البوابة | الحالة | الدليل المختصر |
+|---|---|---|
+| G1 — Docker Engine | `PASS` بتقرير المالك | ذكر المالك: `docker info succeeds (Server Version 29.9.3)`؛ المخرجات الخام الكاملة غير مرفقة. |
+| G2 — Bagisto 2.4.10 | `PASS` | Packagist وGitHub Release/Tag؛ PHP `>=8.3 <8.5` وLaravel `^12.0`. |
+| G3 — API 2.4.4 | `PASS` | Packagist وREADME الوسم؛ يذكر Bagisto 2.4.x مختبرًا على 2.4.10، MySQL 8.0+ أو PostgreSQL 14+. |
+| G4 — Docker tag | `PASS` | `docker manifest inspect webkul/bagisto:2.4.10` أعاد منصتي amd64 وarm64؛ لم تُسحب الصورة. |
+| G5 — دعم MySQL 8.0 من Oracle | `OPEN` | لم يتأكد تاريخ ومستوى الدعم من سجل Oracle؛ لا يبدأ MySQL قبل حسمه. |
+| G6 — Next.js Commerce | `PASS` لخط الإصدار | README على main يذكر Bagisto 2.4.x وAPI 1.0.3؛ تكامله مع API 2.4.4 غير مثبت ويحتاج تحققًا قبل اعتماده. |
+| G7 — تناقض قاعدة البيانات | `OPEN` | Bagisto 2.4 يستبعد PostgreSQL وفق صفحة المتطلبات، بينما API 2.4.4 يذكر PostgreSQL 14+؛ يلزم اختيار المالك. |
+
+### تحديثات البيئة المؤكدة
+
+- `VERIFIED` — Node.js `v22.23.5` وnpm `10.9.9` يعملان داخل Ubuntu من مسار nvm في shell جديد.
+- `PASS — owner-reported` — أفاد المالك أن Docker Engine يعمل بإصدار خادم 29.9.3؛ لم أعد تشغيل إعدادات WSL أو Docker.
+- `NOT_STARTED` — لم تُسحب صور Docker ولم يُشغّل Composer ولم يُنشأ `backend/bagisto`.
+- `OPEN` — قرار قاعدة البيانات ما زال بانتظار المالك؛ اختبارات القبول 0/17.
+- `BLOCKED` — `docs/architecture/FILE_STRUCTURE.md`، المشار إليه كبنية skeleton v2.2، غير موجود في شجرة المستودع التي تمت مراجعتها.
+
+### خطة Phase 1 قبل أي تنفيذ
+
+- المصدر الرسمي هو Compose عند وسم Bagisto 2.4.10: `https://github.com/bagisto/bagisto/blob/v2.4.10/docker-compose.yml`.
+- الإضافات المطلوبة تشمل: `calendar`, `curl`, `intl`, `mbstring`, `openssl`, `pdo`, `pdo_mysql`, `tokenizer`; وتفاصيل متطلبات شاشة التثبيت وتبعيات PHP موثقة في ملحق ADR-023. لم تُفحص الإضافات داخل صورة فعلية لأن الصور لم تُسحب.
+- التخطيط المقترح بعد الموافقة: التطبيق `127.0.0.1:8000`، قاعدة البيانات عند اختيارها `127.0.0.1:3306` مع volume مسمى `sail-mysql`، وMailpit على `127.0.0.1:1025` و`127.0.0.1:8025`. Compose الرسمي لا يحقق كل ربط localhost كما هو، ويستخدم `latest` لـ Mailpit، ويضم Redis/Elasticsearch/Kibana.
+- Redis خدمة اختيارية في صفحة Bagisto، لكنه موجود في Compose الرسمي؛ لا يضاف إلى الإعداد النهائي أو يُحذف من Compose قبل موافقة المالك على طريقة الالتزام بخيارات Docker الرسمية.
+- قائمة الأوامر المقترحة وترتيبها وبوابات الموافقة قبل كل سحب أو Composer أو تشغيل خدمات موجودة في ملحق ADR-023. لم ينفذ أي منها.
+- لا تتغير حالة قبول أو اختبار إلى `TESTED` أو `VERIFIED` دون تنفيذ مسجل.
+
+## سجل التنفيذ — Phase A، 2026-11-18
+
+- أُضيفت المسارات والملفات الناقصة من skeleton v2.2، مع الاحتفاظ دون استبدال الملفات الحالية التي لها محتوى.
+- نتيجة `bash tools/check-structure.sh` داخل Ubuntu: `Checked 178 paths, 0 missing.` ثم `OK: structure matches the manifest.`
+- نُقل `business-dashboard/` و`storefront/src/themes/theme-1-lifestyle/` إلى `docs/archive/2026-11-18-legacy/` وحُفظ محتواهما. لم يكن `infrastructure/` موجودًا.
+- بقي `config/templates/presets.json` سجل القوالب الرسمي؛ يحتوي خمسة معرّفات وحالة `planned` لكل منها، والظهور مفعّل فقط لـ `fashion` و`furniture`.
+- لم يُكتب كود تطبيق، ولم تُسحب صور أو تُثبت حزم، ولم يُنشأ `backend/bagisto` أو تُشغّل قاعدة بيانات.
+- اختبارات القبول ما زالت `0/17`؛ لم يُعلن نجاح أي اختبار قبول.

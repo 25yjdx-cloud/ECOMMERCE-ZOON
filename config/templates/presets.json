@@ -60,7 +60,7 @@
         "beauty"
       ],
       "status": "planned",
-      "featuredOnHome": true,
+      "featuredOnHome": false,
       "thumbnail": "/gallery/local-brand.webp"
     }
   ]

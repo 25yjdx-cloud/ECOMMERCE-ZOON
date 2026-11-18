@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "presets": [
+    {
+      "id": "fashion",
+      "name": { "ar": "أزياء وموضة", "en": "Fashion" },
+      "industries": ["clothing", "shoes", "accessories"],
+      "status": "planned",
+      "featuredOnHome": true,
+      "thumbnail": "/gallery/fashion.webp"
+    },
+    {
+      "id": "furniture",
+      "name": { "ar": "أثاث وديكور", "en": "Furniture & Decor" },
+      "industries": ["furniture", "home decor"],
+      "status": "planned",
+      "featuredOnHome": true,
+      "thumbnail": "/gallery/furniture.webp"
+    },
+    {
+      "id": "electronics",
+      "name": { "ar": "إلكترونيات", "en": "Electronics" },
+      "industries": ["electronics", "gadgets"],
+      "status": "planned",
+      "featuredOnHome": false,
+      "thumbnail": "/gallery/electronics.webp"
+    },
+    {
+      "id": "grocery",
+      "name": { "ar": "بقالة وسوبرماركت", "en": "Grocery" },
+      "industries": ["groceries", "supermarket"],
+      "status": "planned",
+      "featuredOnHome": false,
+      "thumbnail": "/gallery/grocery.webp"
+    },
+    {
+      "id": "local-brand",
+      "name": { "ar": "متجر علامة تجارية", "en": "Local Brand" },
+      "industries": [
+        "fashion",
+        "perfumes",
+        "accessories",
+        "leather goods",
+        "handmade",
+        "beauty"
+      ],
+      "status": "planned",
+      "featuredOnHome": false,
+      "thumbnail": "/gallery/local-brand.webp"
+    }
+  ]
+}
