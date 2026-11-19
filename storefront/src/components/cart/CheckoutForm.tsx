@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { EGYPTIAN_GOVERNORATES, createMockOrderNumber, validateCheckoutDetails, type CheckoutDetails, type CheckoutErrors } from "@/features/checkout/validation";
+import {
+  EGYPTIAN_GOVERNORATES,
+  getShippingFee,
+  validateCheckoutDetails,
+  type CheckoutDetails,
+  type CheckoutErrors,
+  type GovernorateId,
+} from "@/features/checkout/validation";
+import { getOrderWhatsAppUrl } from "@/features/checkout/whatsapp";
+import { getDictionary } from "@/i18n/dictionaries";
+import { formatEGP } from "@/i18n/format";
 import type { MockLocale } from "@/mock/types";
 import { useCart } from "./CartProvider";
 
@@ -16,38 +26,115 @@ const initialDetails: CheckoutDetails = {
   address: "",
 };
 
+function isGovernorateId(value: string): value is GovernorateId {
+  return EGYPTIAN_GOVERNORATES.some(({ id }) => id === value);
+}
+
 export function CheckoutForm({ locale }: CheckoutFormProps) {
   const isArabic = locale === "ar";
   const { items, subtotal, clear } = useCart();
   const [details, setDetails] = useState(initialDetails);
   const [errors, setErrors] = useState<CheckoutErrors>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof CheckoutDetails, boolean>>>({});
   const [orderNumber, setOrderNumber] = useState<string>();
+  const [submitError, setSubmitError] = useState<string>();
+  const [submitting, setSubmitting] = useState(false);
+  const dictionary = getDictionary(locale);
+  const checkout = dictionary.checkout;
+  const shippingFee = getShippingFee(details.governorate);
+  const grandTotal = subtotal + shippingFee;
 
-  function updateField(field: keyof CheckoutDetails, value: string) {
-    setDetails((current) => ({ ...current, [field]: value }));
+  function updateField<Field extends keyof CheckoutDetails>(
+    field: Field,
+    value: CheckoutDetails[Field],
+  ) {
+    const nextDetails = { ...details, [field]: value };
+    setDetails(nextDetails);
+    if (touched[field]) {
+      setErrors((previous) => ({
+        ...previous,
+        [field]: validateCheckoutDetails(nextDetails)[field],
+      }));
+    }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function touchField(field: keyof CheckoutDetails) {
+    setTouched((previous) => ({ ...previous, [field]: true }));
+    setErrors((previous) => ({
+      ...previous,
+      [field]: validateCheckoutDetails(details)[field],
+    }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const validationErrors = validateCheckoutDetails(details);
     setErrors(validationErrors);
+    setTouched({ name: true, phone: true, governorate: true, address: true });
+    setSubmitError(undefined);
 
-    if (Object.keys(validationErrors).length > 0) {
-      return;
+    if (Object.keys(validationErrors).length > 0 || items.length === 0) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/checkout/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeSlug: items[0]?.product.preset,
+          customer: details,
+          items: items.map(({ product, quantity }) => ({
+            productId: product.id,
+            quantity,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        setSubmitError(checkout.connectionError);
+        return;
+      }
+
+      const result: unknown = await response.json();
+      if (
+        typeof result !== "object" ||
+        result === null ||
+        !("orderNumber" in result) ||
+        typeof result.orderNumber !== "string"
+      ) {
+        setSubmitError(checkout.connectionError);
+        return;
+      }
+
+      setOrderNumber(result.orderNumber);
+      clear();
+    } catch (error) {
+      if (error instanceof TypeError) {
+        setSubmitError(checkout.connectionError);
+        return;
+      }
+
+      throw error;
+    } finally {
+      setSubmitting(false);
     }
-
-    setOrderNumber(createMockOrderNumber());
-    clear();
   }
 
   if (orderNumber) {
     return (
       <section className="order-confirmation" role="status">
-        <span className="eyebrow">{isArabic ? "انتهت التجربة" : "Demo complete"}</span>
-        <h1>{isArabic ? "تم إنشاء طلب تجريبي" : "Mock order created"}</h1>
-        <p>{isArabic ? "لم يتم إرسال الطلب أو مشاركة بياناتك مع أي خدمة." : "Nothing was submitted or shared with a service."}</p>
+        <span className="eyebrow">{checkout.successTitle}</span>
+        <h1>{checkout.successTitle}</h1>
+        <p>{checkout.successText}</p>
         <strong>{orderNumber}</strong>
-        <p className="mock-warning">MOCK - no order is sent</p>
+        <a
+          className="button-link"
+          href={getOrderWhatsAppUrl(orderNumber, checkout.whatsappMessage)}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {checkout.whatsappFollowup}
+        </a>
       </section>
     );
   }
@@ -63,42 +150,88 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
 
   return (
     <form className="checkout-form" onSubmit={handleSubmit} noValidate>
-      <p className="mock-warning">MOCK - no order is sent</p>
       <label>
-        <span>{isArabic ? "الاسم" : "Name"}</span>
-        <input autoComplete="name" value={details.name} onChange={(event) => updateField("name", event.currentTarget.value)} />
-        {errors.name && <small className="field-error">{isArabic ? "اكتب اسمًا من حرفين على الأقل." : errors.name}</small>}
+        <span>{checkout.name}</span>
+        <input
+          autoComplete="name"
+          aria-invalid={Boolean(touched.name && errors.name)}
+          className={`checkout-input${touched.name && errors.name ? " is-invalid" : ""}`}
+          onBlur={() => touchField("name")}
+          onChange={(event) => updateField("name", event.currentTarget.value)}
+          value={details.name}
+        />
+        {touched.name && errors.name && <small className="field-error">{checkout.nameError}</small>}
       </label>
       <label>
-        <span>{isArabic ? "رقم الهاتف المصري" : "Egyptian mobile number"}</span>
-        <input autoComplete="tel" inputMode="tel" value={details.phone} onChange={(event) => updateField("phone", event.currentTarget.value)} />
-        {errors.phone && <small className="field-error">{isArabic ? "اكتب رقم هاتف مصريًا صحيحًا." : errors.phone}</small>}
+        <span>{checkout.phone}</span>
+        <input
+          autoComplete="tel-national"
+          aria-invalid={Boolean(touched.phone && errors.phone)}
+          className={`checkout-input${touched.phone && errors.phone ? " is-invalid" : ""}`}
+          dir="ltr"
+          inputMode="numeric"
+          maxLength={11}
+          onBlur={() => touchField("phone")}
+          onChange={(event) => updateField("phone", event.currentTarget.value.replace(/\D/g, "").slice(0, 11))}
+          type="tel"
+          value={details.phone}
+        />
+        {touched.phone && errors.phone && <small className="field-error">{checkout.phoneError}</small>}
       </label>
       <label>
-        <span>{isArabic ? "المحافظة" : "Governorate"}</span>
-        <select value={details.governorate} onChange={(event) => updateField("governorate", event.currentTarget.value)}>
-          <option value="">{isArabic ? "اختر المحافظة" : "Select governorate"}</option>
+        <span>{checkout.governorate}</span>
+        <select
+          aria-invalid={Boolean(touched.governorate && errors.governorate)}
+          className={`checkout-input${touched.governorate && errors.governorate ? " is-invalid" : ""}`}
+          onBlur={() => touchField("governorate")}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            updateField("governorate", isGovernorateId(value) ? value : "");
+          }}
+          value={details.governorate}
+        >
+          <option value="">{checkout.selectGovernorate}</option>
           {EGYPTIAN_GOVERNORATES.map((governorate) => (
-            <option key={governorate} value={governorate}>{governorate}</option>
+            <option key={governorate.id} value={governorate.id}>
+              {governorate.name[locale]} — {formatEGP(governorate.shippingFee, locale)}
+            </option>
           ))}
         </select>
-        {errors.governorate && <small className="field-error">{isArabic ? "اختر محافظة مصرية." : errors.governorate}</small>}
+        {touched.governorate && errors.governorate && <small className="field-error">{checkout.governorateError}</small>}
       </label>
       <label>
-        <span>{isArabic ? "العنوان بالتفصيل" : "Full address"}</span>
-        <textarea autoComplete="street-address" rows={3} value={details.address} onChange={(event) => updateField("address", event.currentTarget.value)} />
-        {errors.address && <small className="field-error">{isArabic ? "اكتب عنوانًا من خمسة أحرف على الأقل." : errors.address}</small>}
+        <span>{checkout.address}</span>
+        <textarea
+          autoComplete="street-address"
+          aria-invalid={Boolean(touched.address && errors.address)}
+          className={`checkout-input${touched.address && errors.address ? " is-invalid" : ""}`}
+          onBlur={() => touchField("address")}
+          onChange={(event) => updateField("address", event.currentTarget.value)}
+          placeholder={checkout.addressPlaceholder}
+          rows={3}
+          value={details.address}
+        />
+        {touched.address && errors.address && <small className="field-error">{checkout.addressError}</small>}
       </label>
       <fieldset className="payment-choice">
-        <legend>{isArabic ? "طريقة الدفع" : "Payment method"}</legend>
-        <label><input type="radio" name="payment" value="cod" checked readOnly /> {isArabic ? "الدفع نقدًا عند الاستلام" : "Cash on delivery"}</label>
+        <legend>{checkout.payment}</legend>
+        <label><input type="radio" name="payment" value="cod" checked readOnly /> {checkout.cashOnDelivery}</label>
       </fieldset>
-      <div className="checkout-total">
-        <span>{isArabic ? "الإجمالي التجريبي" : "Mock total"}</span>
-        <strong>{subtotal.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")} {isArabic ? "ج.م" : "EGP"}</strong>
+      <div className="checkout-summary">
+        <div><span>{checkout.subtotal}</span><strong>{formatEGP(subtotal, locale)}</strong></div>
+        <div>
+          <span>{checkout.shipping}</span>
+          <strong>{details.governorate ? formatEGP(shippingFee, locale) : checkout.shippingNotSelected}</strong>
+        </div>
+        <div className="checkout-grand-total">
+          <span>{checkout.grandTotal}</span>
+          <strong>{formatEGP(grandTotal, locale)}</strong>
+        </div>
       </div>
-      <button className="button-link" type="submit">{isArabic ? "إنشاء طلب تجريبي" : "Create mock order"}</button>
-      <small>{isArabic ? "هذا نموذج توضيحي فقط ولا يرسل طلبًا لأي جهة." : "Demo only. This form does not submit an order."}</small>
+      {submitError && <p className="checkout-submit-error" role="alert">{submitError}</p>}
+      <button className="button-link" disabled={submitting} type="submit">
+        {submitting ? checkout.submitting : checkout.submit}
+      </button>
     </form>
   );
 }

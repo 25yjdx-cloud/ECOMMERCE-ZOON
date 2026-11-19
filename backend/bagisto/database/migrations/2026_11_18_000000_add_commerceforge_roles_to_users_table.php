@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('role')->default('merchant')->index();
+            $table->string('store_slug')->nullable()->unique();
+            $table->string('google_id')->nullable()->unique();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropUnique(['store_slug']);
+            $table->dropUnique(['google_id']);
+            $table->dropIndex(['role']);
+            $table->dropColumn(['role', 'store_slug', 'google_id']);
+        });
+    }
+};

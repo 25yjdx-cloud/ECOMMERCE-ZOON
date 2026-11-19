@@ -1,4 +1,4 @@
-import type { PresetId } from "@/lib/presets";
+import type { PresetRouteId } from "@/lib/presets";
 
 export type MockLocale = "ar" | "en";
 
@@ -10,7 +10,9 @@ export type MockProduct = {
   category: LocalizedText;
   description: LocalizedText;
   price: number;
-  preset: PresetId;
+  compareAtPrice?: number;
+  badge?: LocalizedText;
+  preset: PresetRouteId;
 };
 
 export type PresetMockData = {

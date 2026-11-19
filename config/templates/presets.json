@@ -2,53 +2,110 @@
   "schemaVersion": 1,
   "presets": [
     {
+      "id": "classic",
+      "name": {
+        "ar": "كلاسيكي",
+        "en": "Classic"
+      },
+      "industries": ["lifestyle", "gifts", "home decor"],
+      "status": "live",
+      "featuredOnHome": true,
+      "thumbnail": "/gallery/classic.webp",
+      "categories": [
+        { "ar": "إكسسوارات", "en": "Accessories" },
+        { "ar": "هدايا", "en": "Gifts" },
+        { "ar": "ديكور وأدوات", "en": "Home & Decor" }
+      ],
+      "products": [
+        { "id": "classic-1", "name": { "ar": "مج سيراميك", "en": "Ceramic Mug" }, "category": "Gifts", "description": { "ar": "مج سيراميك بتصميم هادئ.", "en": "A ceramic mug with a calm design." }, "price": 150, "stockQty": 12 },
+        { "id": "classic-2", "name": { "ar": "شنطة يومية", "en": "Everyday Bag" }, "category": "Accessories", "description": { "ar": "شنطة عملية للاستخدام اليومي.", "en": "A practical bag for everyday use." }, "price": 450, "oldPrice": 550, "stockQty": 8 },
+        { "id": "classic-3", "name": { "ar": "سماعة لاسلكية", "en": "Wireless Headphones" }, "category": "Accessories", "description": { "ar": "سماعة خفيفة بصوت واضح.", "en": "Lightweight headphones with clear sound." }, "price": 990, "stockQty": 6 },
+        { "id": "classic-4", "name": { "ar": "صندوق هدية", "en": "Gift Box" }, "category": "Gifts", "description": { "ar": "مجموعة هدايا بتغليف أنيق.", "en": "A gift set with thoughtful packaging." }, "price": 390, "stockQty": 10 },
+        { "id": "classic-5", "name": { "ar": "ساعة ذكية", "en": "Smart Watch" }, "category": "Accessories", "description": { "ar": "ساعة يومية بواجهة واضحة.", "en": "An everyday watch with a clear display." }, "price": 1490, "stockQty": 5 },
+        { "id": "classic-6", "name": { "ar": "نبات زينة", "en": "Decorative Plant" }, "category": "Home & Decor", "description": { "ar": "إضافة خضراء للمساحات الصغيرة.", "en": "A green accent for smaller spaces." }, "price": 380, "stockQty": 9 }
+      ]
+    },
+    {
+      "id": "nabd",
+      "name": {
+        "ar": "نَبض للرياضة",
+        "en": "Nabd Sport"
+      },
+      "industries": ["sports", "fitness", "athleisure"],
+      "status": "live",
+      "featuredOnHome": true,
+      "thumbnail": "/gallery/nabd.webp",
+      "categories": [
+        { "ar": "جيم", "en": "Gym" },
+        { "ar": "جري", "en": "Running" },
+        { "ar": "ملابس", "en": "Apparel" },
+        { "ar": "ترطيب", "en": "Hydration" },
+        { "ar": "ساعات", "en": "Watches" },
+        { "ar": "شنط", "en": "Bags" }
+      ],
+      "products": [
+        { "id": "nabd-1", "name": { "ar": "دمبل قابل للتعديل", "en": "Adjustable Dumbbell" }, "category": "Gym", "description": { "ar": "أداة تدريب منزلية متعددة الاستخدام.", "en": "A versatile tool for home training." }, "price": 1250, "stockQty": 7 },
+        { "id": "nabd-2", "name": { "ar": "حذاء جري خفيف", "en": "Light Running Shoes" }, "category": "Running", "description": { "ar": "حذاء مريح للحركة اليومية.", "en": "Comfortable shoes for everyday movement." }, "price": 1890, "stockQty": 6 },
+        { "id": "nabd-3", "name": { "ar": "قميص تدريب", "en": "Training Shirt" }, "category": "Apparel", "description": { "ar": "قماش خفيف للتمارين.", "en": "Light fabric for training sessions." }, "price": 520, "oldPrice": 650, "stockQty": 15 },
+        { "id": "nabd-4", "name": { "ar": "زجاجة رياضية", "en": "Sports Bottle" }, "category": "Hydration", "description": { "ar": "زجاجة عملية للتمرين والتنقل.", "en": "A practical bottle for training and travel." }, "price": 240, "stockQty": 20 },
+        { "id": "nabd-5", "name": { "ar": "ساعة نشاط", "en": "Activity Watch" }, "category": "Watches", "description": { "ar": "تابع نشاطك اليومي بسهولة.", "en": "Keep track of daily activity." }, "price": 2150, "stockQty": 4 },
+        { "id": "nabd-6", "name": { "ar": "حقيبة تدريب", "en": "Training Bag" }, "category": "Bags", "description": { "ar": "مساحة منظمة لمستلزماتك الرياضية.", "en": "Organized space for your sports essentials." }, "price": 780, "stockQty": 8 }
+      ]
+    },
+    {
       "id": "fashion",
       "name": {
-        "ar": "أزياء وموضة",
-        "en": "Fashion"
+        "ar": "فريدة للأزياء",
+        "en": "Farida Fashion"
       },
       "industries": ["clothing", "shoes", "accessories"],
-      "status": "planned",
+      "status": "live",
       "featuredOnHome": true,
-      "thumbnail": "/gallery/fashion.webp"
+      "thumbnail": "/gallery/fashion.webp",
+      "categories": [
+        { "ar": "فساتين", "en": "Dresses" },
+        { "ar": "ملابس يومية", "en": "Everyday" },
+        { "ar": "حقائب", "en": "Bags" },
+        { "ar": "إكسسوارات", "en": "Accessories" }
+      ],
+      "products": [
+        { "id": "fashion-1", "name": { "ar": "فستان ليلكي", "en": "Lilac Dress" }, "category": "Dresses", "description": { "ar": "تصميم أنيق للاستخدام اليومي.", "en": "An elegant everyday design." }, "price": 1890, "oldPrice": 2190, "stockQty": 5 },
+        { "id": "fashion-2", "name": { "ar": "قميص كلاسيكي", "en": "Classic Shirt" }, "category": "Everyday", "description": { "ar": "قصة مريحة وخامة ناعمة.", "en": "A relaxed cut in a soft fabric." }, "price": 790, "stockQty": 9 },
+        { "id": "fashion-3", "name": { "ar": "حقيبة كتف", "en": "Shoulder Bag" }, "category": "Bags", "description": { "ar": "تفاصيل بسيطة ولمسة عصرية.", "en": "Simple details with a modern touch." }, "price": 1250, "stockQty": 7 },
+        { "id": "fashion-4", "name": { "ar": "طقم ذهبي", "en": "Golden Set" }, "category": "Accessories", "description": { "ar": "إكسسوار أنيق للمناسبات اليومية.", "en": "An elegant accessory for everyday occasions." }, "price": 540, "stockQty": 12 },
+        { "id": "fashion-5", "name": { "ar": "جاكيت خفيف", "en": "Light Jacket" }, "category": "Everyday", "description": { "ar": "طبقة خفيفة بألوان هادئة.", "en": "A light layer in calm colors." }, "price": 1490, "stockQty": 4 },
+        { "id": "fashion-6", "name": { "ar": "وشاح ناعم", "en": "Soft Scarf" }, "category": "Accessories", "description": { "ar": "إضافة يومية أنيقة.", "en": "An elegant everyday accessory." }, "price": 390, "stockQty": 10 }
+      ]
     },
     {
       "id": "furniture",
       "name": {
-        "ar": "أثاث وديكور",
-        "en": "Furniture & Decor"
+        "ar": "دارك للأثاث",
+        "en": "Dark Home"
       },
       "industries": ["furniture", "home decor"],
-      "status": "planned",
-      "featuredOnHome": true,
-      "thumbnail": "/gallery/furniture.webp"
-    },
-    {
-      "id": "electronics",
-      "name": {
-        "ar": "إلكترونيات",
-        "en": "Electronics"
-      },
-      "industries": ["electronics", "gadgets"],
-      "status": "planned",
+      "status": "live",
       "featuredOnHome": false,
-      "thumbnail": "/gallery/electronics.webp"
-    },
-    {
-      "id": "grocery",
-      "name": {
-        "ar": "بقالة وسوبرماركت",
-        "en": "Grocery"
-      },
-      "industries": ["groceries", "supermarket"],
-      "status": "planned",
-      "featuredOnHome": false,
-      "thumbnail": "/gallery/grocery.webp"
+      "thumbnail": "/gallery/furniture.webp",
+      "categories": [
+        { "ar": "غرف المعيشة", "en": "Living room" },
+        { "ar": "غرف النوم", "en": "Bedroom" },
+        { "ar": "الإضاءة", "en": "Lighting" },
+        { "ar": "ديكور المنزل", "en": "Home decor" }
+      ],
+      "products": [
+        { "id": "furniture-1", "name": { "ar": "كرسي خشبي", "en": "Oak Accent Chair" }, "category": "Living room", "description": { "ar": "قطعة بتفاصيل خشبية وخطوط بسيطة.", "en": "A wooden piece with clean lines." }, "price": 6200, "oldPrice": 6800, "stockQty": 3 },
+        { "id": "furniture-2", "name": { "ar": "طاولة جانبية", "en": "Side Table" }, "category": "Living room", "description": { "ar": "حجم عملي ولمسة طبيعية.", "en": "A practical size with a natural finish." }, "price": 2450, "stockQty": 5 },
+        { "id": "furniture-3", "name": { "ar": "مصباح أرضي", "en": "Floor Lamp" }, "category": "Lighting", "description": { "ar": "إضاءة دافئة لركن هادئ.", "en": "Warm light for a quiet corner." }, "price": 3150, "stockQty": 4 },
+        { "id": "furniture-4", "name": { "ar": "وسادة منسوجة", "en": "Woven Cushion" }, "category": "Home decor", "description": { "ar": "تفصيلة مريحة بألوان ترابية.", "en": "A cozy detail in earthy colors." }, "price": 650, "stockQty": 12 },
+        { "id": "furniture-5", "name": { "ar": "مرآة دائرية", "en": "Round Mirror" }, "category": "Bedroom", "description": { "ar": "تصميم بسيط للمساحات الصغيرة.", "en": "A simple design for smaller spaces." }, "price": 1890, "stockQty": 6 },
+        { "id": "furniture-6", "name": { "ar": "طاولة قهوة", "en": "Coffee Table" }, "category": "Living room", "description": { "ar": "مساحة عملية بتصميم هادئ.", "en": "A useful surface with a calm design." }, "price": 4800, "stockQty": 4 }
+      ]
     },
     {
       "id": "local-brand",
       "name": {
-        "ar": "متجر علامة تجارية",
+        "ar": "لوكال براند",
         "en": "Local Brand"
       },
       "industries": [
@@ -59,9 +116,23 @@
         "handmade",
         "beauty"
       ],
-      "status": "planned",
+      "status": "live",
       "featuredOnHome": false,
-      "thumbnail": "/gallery/local-brand.webp"
+      "thumbnail": "/gallery/local-brand.webp",
+      "categories": [
+        { "ar": "العناية بالبشرة", "en": "Skincare" },
+        { "ar": "العطور", "en": "Fragrance" },
+        { "ar": "منتجات يدوية", "en": "Handmade" },
+        { "ar": "المجموعات الجديدة", "en": "New collections" }
+      ],
+      "products": [
+        { "id": "local-brand-1", "name": { "ar": "عطر زهري", "en": "Floral Scent" }, "category": "Fragrance", "description": { "ar": "عطر بلمسات زهرية ناعمة.", "en": "A fragrance with soft floral notes." }, "price": 790, "oldPrice": 890, "stockQty": 6 },
+        { "id": "local-brand-2", "name": { "ar": "صابون يدوي", "en": "Handmade Soap" }, "category": "Handmade", "description": { "ar": "قطعة مصنوعة يدويًا بمكونات مختارة.", "en": "A handcrafted bar made with selected ingredients." }, "price": 180, "stockQty": 14 },
+        { "id": "local-brand-3", "name": { "ar": "كريم مرطب", "en": "Daily Moisturizer" }, "category": "Skincare", "description": { "ar": "ترطيب يومي بملمس خفيف.", "en": "Daily hydration with a lightweight feel." }, "price": 390, "stockQty": 10 },
+        { "id": "local-brand-4", "name": { "ar": "حقيبة جلدية", "en": "Leather Pouch" }, "category": "Handmade", "description": { "ar": "حقيبة عملية بتفاصيل مصنوعة بعناية.", "en": "A practical pouch with carefully crafted details." }, "price": 1120, "stockQty": 5 },
+        { "id": "local-brand-5", "name": { "ar": "زيت عطري", "en": "Essential Oil" }, "category": "Fragrance", "description": { "ar": "زيت عطري بتركيبة مركزة.", "en": "A concentrated aromatic oil." }, "price": 250, "stockQty": 8 },
+        { "id": "local-brand-6", "name": { "ar": "مجموعة عناية", "en": "Care Set" }, "category": "New collections", "description": { "ar": "مجموعة عناية متكاملة للاستخدام اليومي.", "en": "A complete daily care collection." }, "price": 950, "stockQty": 7 }
+      ]
     }
   ]
 }

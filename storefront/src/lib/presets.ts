@@ -1,14 +1,17 @@
 import presetRegistry from "../../../config/templates/presets.json";
 
 export const PRESET_IDS = [
+  "classic",
+  "nabd",
   "fashion",
   "furniture",
-  "electronics",
-  "grocery",
   "local-brand",
 ] as const;
 
 export type PresetId = (typeof PRESET_IDS)[number];
+export const LEGACY_PRESET_ROUTE_IDS = ["electronics", "grocery"] as const;
+export const PRESET_ROUTE_IDS = [...PRESET_IDS, ...LEGACY_PRESET_ROUTE_IDS] as const;
+export type PresetRouteId = (typeof PRESET_ROUTE_IDS)[number];
 export type Preset = Omit<(typeof presetRegistry.presets)[number], "id"> & {
   id: PresetId;
 };
@@ -37,11 +40,14 @@ export const presets: readonly Preset[] = presetRegistry.presets.map((preset) =>
 });
 
 export function getPreset(value: string): Preset | undefined {
-  if (!isPresetId(value)) {
+  const resolvedId =
+    value === "electronics" ? "nabd" : value === "grocery" ? "classic" : value;
+
+  if (!isPresetId(resolvedId)) {
     return undefined;
   }
 
-  return presets.find((preset) => preset.id === value);
+  return presets.find((preset) => preset.id === resolvedId);
 }
 
 export function getFeaturedPresets(): readonly Preset[] {

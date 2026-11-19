@@ -1,41 +1,41 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import type { MockLocale } from "@/mock/types";
-import { getPreset, PRESET_IDS } from "@/lib/presets";
 import { StorePreview } from "@/components/storefront/StorePreview";
+import { getDictionary } from "@/i18n/dictionaries";
+import { getLocale, type QueryValues } from "@/i18n/locale";
+import { getPreset, PRESET_ROUTE_IDS } from "@/lib/presets";
+import type { MockLocale } from "@/mock/types";
+import { getAuthUser } from "@/lib/auth";
 
 type PreviewPageProps = {
   params: Promise<{ preset: string }>;
-  searchParams: Promise<{ lang?: string | string[] }>;
+  searchParams: Promise<QueryValues>;
 };
 
 export function generateStaticParams() {
-  return PRESET_IDS.map((preset) => ({ preset }));
+  return PRESET_ROUTE_IDS.map((preset) => ({ preset }));
 }
 
 export async function generateMetadata({ params }: PreviewPageProps): Promise<Metadata> {
   const { preset: presetId } = await params;
   const preset = getPreset(presetId);
-  if (!preset) {
-    return { title: "القالب غير موجود" };
-  }
-
-  return {
-    title: `معاينة ${preset.name.ar}`,
-    description: `معاينة تجريبية لقالب ${preset.name.ar} ببيانات مؤقتة.`,
-  };
+  return { title: preset ? `Preview ${preset.name.en}` : "Preset not found" };
 }
 
 export default async function PreviewPage({ params, searchParams }: PreviewPageProps) {
   const [{ preset: presetId }, query] = await Promise.all([params, searchParams]);
   const preset = getPreset(presetId);
+  if (!preset) notFound();
 
-  if (!preset) {
-    notFound();
-  }
-
-  const language = Array.isArray(query.lang) ? query.lang[0] : query.lang;
-  const locale: MockLocale = language === "en" ? "en" : "ar";
-
-  return <StorePreview locale={locale} preset={preset} />;
+  const locale: MockLocale = getLocale(query.lang);
+  const user = await getAuthUser();
+  return (
+    <StorePreview
+      dictionary={getDictionary(locale)}
+      locale={locale}
+      preset={preset}
+      query={query}
+      user={user}
+    />
+  );
 }

@@ -13,6 +13,10 @@ out/
 dist/
 build/
 coverage/
+**/node_modules/
+**/vendor/
+**/.next/
+**/dist/
 
 # Logs, caches, and local editor files
 *.log
@@ -25,6 +29,8 @@ Thumbs.db
 # Local database and backup artifacts
 *.sqlite
 *.sqlite3
+backend/storage/**
+backups/**
 deployment/backups/*
 !deployment/backups/.gitkeep
 !deployment/backups/README.md

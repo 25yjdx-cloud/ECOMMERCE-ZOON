@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic, Inter } from "next/font/google";
+import { Cairo, Plus_Jakarta_Sans } from "next/font/google";
 import { CartProvider } from "@/components/cart/CartProvider";
+import { LocaleSync } from "@/components/storefront/LocaleSync";
 import "./globals.css";
 
-const arabicFont = IBM_Plex_Sans_Arabic({
+const arabicFont = Cairo({
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-ibm-plex",
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-cairo",
   display: "swap",
 });
 
-const englishFont = Inter({
+const englishFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
   display: "swap",
 });
 
@@ -32,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className={`${arabicFont.variable} ${englishFont.variable}`}>
       <body>
+        <LocaleSync />
         <CartProvider>{children}</CartProvider>
       </body>
     </html>

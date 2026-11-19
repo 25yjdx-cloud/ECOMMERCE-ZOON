@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCart } from "./CartProvider";
+import { getDictionary } from "@/i18n/dictionaries";
+import { formatEGP } from "@/i18n/format";
 import type { MockLocale } from "@/mock/types";
 
 type CartClientProps = {
@@ -11,13 +13,14 @@ type CartClientProps = {
 export function CartClient({ locale }: CartClientProps) {
   const { items, subtotal, setQuantity, remove } = useCart();
   const isArabic = locale === "ar";
+  const dictionary = getDictionary(locale);
 
   return (
     <main className="page-shell commerce-page" lang={locale} dir={isArabic ? "rtl" : "ltr"}>
       <div className="commerce-heading">
-        <span className="eyebrow">{isArabic ? "سلة تجريبية" : "Demo cart"}</span>
+        <span className="eyebrow">{dictionary.store.cart}</span>
         <h1 className="page-heading">{isArabic ? "سلة التسوق" : "Shopping cart"}</h1>
-        <p className="mock-warning">MOCK - no order is sent</p>
+        <p className="page-description">{dictionary.store.cartDataNote}</p>
       </div>
       {items.length === 0 ? (
         <section className="empty-state">
@@ -34,7 +37,7 @@ export function CartClient({ locale }: CartClientProps) {
                 <div className="cart-line-details">
                   <p>{product.category[locale]}</p>
                   <h2>{product.name[locale]}</h2>
-                  <strong>{product.price.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")} {isArabic ? "ج.م" : "EGP"}</strong>
+                  <strong>{formatEGP(product.price, locale)}</strong>
                 </div>
                 <label className="quantity-control">
                   <span>{isArabic ? "الكمية" : "Quantity"}</span>
@@ -58,15 +61,15 @@ export function CartClient({ locale }: CartClientProps) {
             ))}
           </section>
           <aside className="order-summary">
-            <h2>{isArabic ? "ملخص الطلب التجريبي" : "Mock order summary"}</h2>
+            <h2>{isArabic ? "ملخص الطلب" : "Order summary"}</h2>
             <p>
               <span>{isArabic ? "الإجمالي الفرعي" : "Subtotal"}</span>
-              <strong>{subtotal.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")} {isArabic ? "ج.م" : "EGP"}</strong>
+              <strong>{formatEGP(subtotal, locale)}</strong>
             </p>
             <Link className="button-link" href={`/checkout?lang=${locale}`}>
               {isArabic ? "متابعة إلى بيانات التوصيل" : "Continue to checkout"}
             </Link>
-            <small>{isArabic ? "لا يتم إرسال أي طلب أو دفع." : "No order or payment is submitted."}</small>
+            <small>{dictionary.store.cartDataNote}</small>
           </aside>
         </div>
       )}

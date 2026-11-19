@@ -16,7 +16,9 @@ describe("preset registry", () => {
     expect(getPreset("unknown")).toBeUndefined();
   });
 
-  it("features only fashion and furniture on the gallery home page", () => {
-    expect(getFeaturedPresets().map(({ id }) => id)).toEqual(["fashion", "furniture"]);
+  it("keeps the approved template routes and three home features", () => {
+    expect(getFeaturedPresets().map(({ id }) => id)).toEqual(["classic", "nabd", "fashion"]);
+    expect(getPreset("electronics")?.id).toBe("nabd");
+    expect(getPreset("grocery")?.id).toBe("classic");
   });
 });

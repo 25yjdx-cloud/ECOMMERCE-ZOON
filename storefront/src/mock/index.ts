@@ -1,15 +1,15 @@
 import type { PresetId } from "@/lib/presets";
 import type { PresetMockData } from "./types";
-import electronics from "./electronics";
+import classic from "./classic";
 import fashion from "./fashion";
 import furniture from "./furniture";
-import grocery from "./grocery";
 import localBrand from "./local-brand";
+import nabd from "./nabd";
 
 export const mockData: Record<PresetId, PresetMockData> = {
+  classic,
+  nabd,
   fashion,
   furniture,
-  electronics,
-  grocery,
   "local-brand": localBrand,
 };

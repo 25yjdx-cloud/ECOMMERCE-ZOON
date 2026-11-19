@@ -8,7 +8,7 @@ CommerceForge نواة تقنية مشتركة لصناعة متاجر إلكت�
 
 ## القرارات المعتمدة
 
-- **Backend:** الحفاظ على Laravel وBagisto كأساس backend ما لم يكشف التدقيق عائقًا تقنيًا جوهريًا. لم تُثبت Bagisto بعد، وإصدارات PHP وLaravel وBagisto لم تُعتمد.
+- **Backend:** Bagisto `2.4.10` مع `bagisto/bagisto-api` `2.4.4`، Laravel 12، وPHP 8.3 داخل الحاويات، وفق [ADR-023](../decisions/ADR-023-backend-stack.md). تحقق توافق API مع Bagisto 2.4.10؛ التثبيت ينتظر تشغيل Docker والتحقق النهائي من دعم MySQL.
 - **Storefront:** Next.js وReact وTypeScript، مع Tailwind CSS واتجاه App Router عند توافقه مع المشروع.
 - **لوحة المتجر:** تطبيق Next.js/React مخصص لإدارة متجر العميل. لا تستبدلها بلوحة Bagisto الأصلية.
 - **القوالب:** خمسة معرّفات رسمية ثابتة في `config/templates/presets.json`. هذا الملف هو مصدر الحقيقة لبيانات تعريف القوالب.
@@ -16,6 +16,8 @@ CommerceForge نواة تقنية مشتركة لصناعة متاجر إلكت�
 - **التخصيص:** إعدادات متجر منظمة، مع تعديلات مخصصة مضبوطة عند الحاجة؛ لا يبدأ المشروع بمنشئ صفحات drag-and-drop.
 - **Meta Ads:** أولوية عالية بعد تأسيس الاتصال الآمن والواجهات، مع عزل بيانات واعتمادات كل عميل.
 - **خارج النطاق الحالي:** SaaS متعدد المستأجرين، وفوترة SaaS، وERP، وPOS.
+
+القوالب الخمسة الرسمية تنتمي إلى عائلة تنظيمية داخلية باسم `lifestyle`، مع الاحتفاظ بمعرّفاتها ومخطط JSON الرسمي دون إضافة حقول غير معتمدة.
 
 ## مسؤوليات المكونات
 
@@ -65,14 +67,14 @@ CommerceForge نواة تقنية مشتركة لصناعة متاجر إلكت�
 
 ## بيئة التطوير
 
-البيئة المستهدفة Windows مع WSL2 وUbuntu وDocker Desktop وDocker Compose وGit وNode.js وPHP وComposer. إصدارات PHP وComposer وNode.js وMySQL وأطر العمل تُحسم بمصفوفة توافق قبل تثبيت الاعتمادات. لا تُرقَّى الإصدارات تلقائيًا.
+بيئة التطوير المستهدفة Windows مع WSL2 وUbuntu وDocker Desktop وDocker Compose وGit. Node.js 22 LTS يعمل داخل Ubuntu؛ PHP 8.3 وComposer 2 يعملان في حاويات. MySQL 8.0 هو الاختيار الأولي لأن API Platform 2.4.4 يوثقه، مع إبقاء تأكيد دورة دعم Oracle بوابة قبل تشغيل قاعدة البيانات.
 
-تم تثبيت Docker وتهيئة WSL2/Ubuntu على جهاز المطور بحسب التحقق المحلي. لا يوجد حاليًا تثبيت Bagisto أو Laravel في المشروع، ولا يتطلب بدء تدقيق Phase 0 التسجيل في Bagisto.
+Docker وWSL2/Ubuntu مثبتان؛ لكن Docker Desktop يعرض `Docker Desktop is unable to start` ولا يتصل Docker CLI بالمحرك. ثُبّت Node.js 22.23.5 LTS في Ubuntu عبر nvm وتحقق مسار Node/npm في shell جديد. لا يوجد حاليًا تثبيت Bagisto أو Laravel في المشروع، ولا يتطلب بدء تدقيق Phase 0 التسجيل في Bagisto.
 
 ## خارطة التنفيذ
 
-1. **Phase 0 — Audit & Foundation Review:** تدقيق المستودع والقرارات والبيئة؛ لا تنفيذ متجر ولا تثبيتات غير معتمدة.
-2. **Phase 1 — Architecture Foundation:** اعتماد مصفوفة الإصدارات والعقود والبيئة والحدود الأمنية، ثم إنشاء الأساس بموافقة المستخدم.
+1. **Phase 0 — Audit & Foundation Review:** تدقيق المستودع والقرارات والبيئة واعتماد مصفوفة التوافق؛ اكتمل التدقيق بموافقة المستخدم للانتقال.
+2. **Phase 1 — Architecture Foundation:** إعداد بيئة التطوير، ثم تثبيت Bagisto/API بعد تشغيل Docker واستكمال بوابات التحقق، واعتماد عقود API والحدود الأمنية.
 3. **Phase 2 — لوحة المتجر:** تطوير لوحة Next.js وربطها بواجهات Bagisto المتحقق منها.
 4. **Phase 3 — التحليلات:** تقارير مبيعات وربح بقواعد مالية موثقة وبيانات حقيقية.
 5. **Phase 4 — Meta Ads:** التفويض الآمن وعزل الحسابات وجلب Insights ومعالجة الانتهاء والأخطاء.

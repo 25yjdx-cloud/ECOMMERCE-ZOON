@@ -4,14 +4,17 @@ import type { Preset } from "@/lib/presets";
 import { mockData } from "@/mock";
 import type { MockLocale } from "@/mock/types";
 import { PresetIcon } from "./PresetIcon";
+import { ProductArtwork } from "./ProductArtwork";
+import type { AuthUser } from "@/lib/auth";
 
 type ShowcasePresetCardProps = {
   preset: Preset;
   locale: MockLocale;
   dictionary: Dictionary;
+  user?: AuthUser | null;
 };
 
-export function ShowcasePresetCard({ preset, locale, dictionary }: ShowcasePresetCardProps) {
+export function ShowcasePresetCard({ preset, locale, dictionary, user = null }: ShowcasePresetCardProps) {
   const gallery = dictionary.gallery;
   const products = mockData[preset.id].products.slice(0, 4);
   const formatter = new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
@@ -40,7 +43,7 @@ export function ShowcasePresetCard({ preset, locale, dictionary }: ShowcasePrese
           {products.map((product) => (
             <div className="mini-tile" key={product.id}>
               <span className="mini-tile-art" aria-label={dictionary.store.placeholder}>
-                <PresetIcon preset={preset.id} size={20} />
+                <ProductArtwork preset={preset.id} productId={product.id} />
               </span>
               <strong>{product.name[locale]}</strong>
               <span>{formatter.format(product.price)}</span>
@@ -49,22 +52,34 @@ export function ShowcasePresetCard({ preset, locale, dictionary }: ShowcasePrese
           ))}
         </div>
       </div>
+      <div className="preset-card-scrim" aria-hidden="true" />
+      <span className="preset-card-badge">
+        {preset.featuredOnHome ? gallery.featuredBadge : gallery.freeBadge}
+      </span>
       <div className="preset-card-content">
         <div className="preset-title-row">
           <div>
-            <h3 lang="ar">{preset.name.ar}</h3>
-            <p lang="en" dir="ltr">{preset.name.en}</p>
+            <h3>{preset.name[locale]}</h3>
           </div>
-          <span className="status-badge">{gallery.statusPlanned}</span>
         </div>
         <p className="preset-description">{gallery.presetDescription[preset.id]}</p>
+        <div className="preset-card-meta">
+          <span>{gallery.statusPlanned}</span>
+          <span>{gallery.categoryTag}</span>
+        </div>
         <div className="preset-actions">
-          <Link className="button-link accent" href={`/preview/${preset.id}`}>
-            {gallery.livePreview}
+          <Link className="button-link preset-live-button" href={`/preview/${preset.id}?lang=${locale}`}>
+            {gallery.livePreview} {locale === "ar" ? "←" : "→"}
           </Link>
-          <Link className="button-link secondary" href={`/preview/${preset.id}`}>
-            {gallery.choose}
-          </Link>
+          {user?.role === "super_admin" ? (
+            <Link aria-label={gallery.customize} className="preset-customize-button" href={`/manager/${preset.id}?lang=${locale}`}>
+              ✎
+            </Link>
+          ) : (
+            <Link aria-label={gallery.customizeLogin} className="preset-customize-button" href={`/login?lang=${locale}&template=${preset.id}`}>
+              ✎
+            </Link>
+          )}
         </div>
       </div>
     </article>

@@ -8,7 +8,7 @@ const localBrand: PresetMockData = {
     { ar: "المجموعات الجديدة", en: "New collections" },
   ],
   products: [
-    { id: "local-brand-1", name: { ar: "عطر زهري", en: "Floral Scent" }, category: { ar: "العطور", en: "Fragrance" }, description: { ar: "مثال تجريبي لمنتج علامة محلية", en: "A demo product for a local brand" }, price: 790, preset: "local-brand" },
+    { id: "local-brand-1", name: { ar: "عطر زهري", en: "Floral Scent" }, category: { ar: "العطور", en: "Fragrance" }, description: { ar: "مثال تجريبي لمنتج علامة محلية", en: "A demo product for a local brand" }, price: 790, compareAtPrice: 890, badge: { ar: "عرض", en: "Offer" }, preset: "local-brand" },
     { id: "local-brand-2", name: { ar: "صابون يدوي", en: "Handmade Soap" }, category: { ar: "منتجات يدوية", en: "Handmade" }, description: { ar: "قطعة مصنوعة يدويًا للعرض فقط", en: "A handcrafted demo item" }, price: 180, preset: "local-brand" },
     { id: "local-brand-3", name: { ar: "كريم مرطب", en: "Daily Moisturizer" }, category: { ar: "العناية بالبشرة", en: "Skincare" }, description: { ar: "محتوى تجريبي غير مخصص للبيع", en: "Mock content, not for sale" }, price: 390, preset: "local-brand" },
     { id: "local-brand-4", name: { ar: "حقيبة جلدية", en: "Leather Pouch" }, category: { ar: "منتجات يدوية", en: "Handmade" }, description: { ar: "معاينة بطاقة لمنتج محلي", en: "A sample card for a local product" }, price: 1120, preset: "local-brand" },

@@ -3,6 +3,7 @@ import { LandingExperience } from "@/components/landing/LandingExperience";
 import { getDictionary } from "@/i18n/dictionaries";
 import type { MockLocale } from "@/mock/types";
 import { presets } from "@/lib/presets";
+import { getAuthUser } from "@/lib/auth";
 
 type HomePageProps = {
   searchParams: Promise<{ lang?: string | string[] }>;
@@ -18,11 +19,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const lang = Array.isArray(query.lang) ? query.lang[0] : query.lang;
   const locale: MockLocale = lang === "en" ? "en" : "ar";
 
+  const user = await getAuthUser();
+
   return (
     <LandingExperience
       dictionary={getDictionary(locale)}
       locale={locale}
       presets={presets}
+      user={user}
     />
   );
 }

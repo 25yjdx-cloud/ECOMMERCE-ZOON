@@ -1,10 +1,18 @@
+import { redirect } from "next/navigation";
+import { getAuthUser } from "@/lib/auth";
+
 const products = [
   { name: "فستان ليلكي", category: "أزياء", stock: 18, status: "متاح" },
   { name: "حقيبة كتف", category: "حقائب", stock: 9, status: "متاح" },
   { name: "وشاح ناعم", category: "إكسسوارات", stock: 2, status: "مخزون منخفض" },
 ];
 
-export default function DashboardProductsPage() {
+export default async function DashboardProductsPage() {
+  const user = await getAuthUser();
+  if (!user) redirect("/login?lang=ar&redirect=%2Fdashboard%2Fmy-store");
+  if (user.role !== "merchant") redirect("/manager/classic?lang=ar");
+  redirect("/dashboard/my-store");
+
   return (
     <main className="dashboard-page">
       <span className="eyebrow">إدارة الكتالوج التجريبي</span>
