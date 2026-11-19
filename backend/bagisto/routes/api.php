@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AiAssistantController;
 use App\Http\Controllers\Api\V1\CommerceForgeController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Middleware\EnsurePlatformOwner;
 use App\Http\Middleware\EnsureOwnsStore;
 use Illuminate\Support\Facades\Route;
@@ -13,11 +15,18 @@ Route::prefix('v1')->group(function () {
     Route::get('/stores/{slug}/products', [CommerceForgeController::class, 'products']);
     Route::post('/orders', [CommerceForgeController::class, 'createOrder'])->middleware('throttle:10,1');
     Route::post('/quote-requests', [CommerceForgeController::class, 'createQuote'])->middleware('throttle:5,1');
+    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/ai/assist', [AiAssistantController::class, 'assist'])->middleware('throttle:10,1');
+    Route::middleware('auth:sanctum')
+        ->post('/merchant/stores', [CommerceForgeController::class, 'createMerchantStore']);
 
     Route::middleware(['auth:sanctum', EnsurePlatformOwner::class])->group(function () {
         Route::get('/quote-requests', [CommerceForgeController::class, 'quotes']);
-        Route::put('/stores/{slug}/config', [CommerceForgeController::class, 'updateStoreConfig']);
         Route::post('/stores/{slug}/clone', [CommerceForgeController::class, 'cloneStore']);
+    });
+
+    Route::middleware(['auth:sanctum', EnsureOwnsStore::class])->group(function () {
+        Route::put('/stores/{slug}/config', [CommerceForgeController::class, 'updateStoreConfig']);
         Route::post('/stores/{slug}/products', [CommerceForgeController::class, 'createProduct']);
         Route::put('/stores/{slug}/products/{product}', [CommerceForgeController::class, 'updateProduct']);
         Route::delete('/stores/{slug}/products/{product}', [CommerceForgeController::class, 'deleteProduct']);

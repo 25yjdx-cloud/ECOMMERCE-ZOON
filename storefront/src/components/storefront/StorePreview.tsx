@@ -21,6 +21,7 @@ type StoreConfigResponse = {
   data: {
     config: {
       store_name?: string;
+      logo_url?: string | null;
       primary_color?: string;
       background_color?: string;
       mode?: "light" | "dark";
@@ -69,11 +70,13 @@ export function StorePreview({
   const template = templateModules[preset.id];
   const store = dictionary.store;
   const storeName = store.storeNames[preset.id];
+  const requestedStore = Array.isArray(query.store) ? query.store[0] : query.store;
+  const storeSlug = requestedStore || preset.id;
   useEffect(() => {
     let active = true;
     void Promise.all([
-      fetch(`/api/stores/${encodeURIComponent(preset.id)}/config`, { cache: "no-store" }),
-      fetch(`/api/stores/${encodeURIComponent(preset.id)}/products`, { cache: "no-store" }),
+      fetch(`/api/stores/${encodeURIComponent(storeSlug)}/config`, { cache: "no-store" }),
+      fetch(`/api/stores/${encodeURIComponent(storeSlug)}/products`, { cache: "no-store" }),
     ]).then(async ([configResponse, productsResponse]) => {
       if (!configResponse.ok || !productsResponse.ok) return;
       const [configResult, productsResult] = await Promise.all([
@@ -92,8 +95,8 @@ export function StorePreview({
     });
 
     return () => { active = false; };
-  }, [preset.id]);
-  const productsData = remoteProducts?.length
+  }, [preset.id, storeSlug]);
+  const productsData = remoteProducts
     ? remoteProducts.map((product) => ({
         id: product.external_id ?? String(product.id),
         name: { ar: product.name_ar, en: product.name_en },
@@ -105,8 +108,9 @@ export function StorePreview({
         price: Number(product.price),
         ...(product.old_price ? { compareAtPrice: Number(product.old_price) } : {}),
         preset: preset.id,
+        storeSlug,
       }))
-    : data.products;
+    : data.products.map((product) => ({ ...product, storeSlug }));
   const products = useMemo(() => {
     const term = search.trim().toLocaleLowerCase(locale === "ar" ? "ar-EG" : "en-US");
     return productsData.filter((product) => {
@@ -136,7 +140,11 @@ export function StorePreview({
       <PreviewTopbar dictionary={dictionary} locale={locale} preset={preset} query={query} user={user} />
       {preset.id === "nabd" && <div className="store-announcement">{store.nabdAnnouncement}</div>}
       <header className="store-topbar">
-        <Link className="brand-mark" href={`/preview/${preset.id}?lang=${locale}`}>
+        <Link
+          className="brand-mark"
+          href={`/preview/${preset.id}?${new URLSearchParams({ lang: locale, ...(requestedStore ? { store: requestedStore } : {}) }).toString()}`}
+        >
+          {remoteConfig?.logo_url && <img alt="" className="store-logo" src={remoteConfig.logo_url} />}
           <span aria-hidden="true" className="brand-symbol">C</span>
           <span>{remoteConfig?.store_name ?? storeName}</span>
         </Link>

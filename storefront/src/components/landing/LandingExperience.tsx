@@ -32,6 +32,7 @@ import { PresetCardGrid } from "@/components/storefront/PresetCardGrid";
 import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocumentAttributes";
 import type { AuthUser } from "@/lib/auth";
 import { QuoteRequestForm } from "./QuoteRequestForm";
+import { Footer } from "./Footer";
 
 type LandingExperienceProps = {
   locale: MockLocale;
@@ -312,16 +313,7 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
           </div>
         </FadeUpSection>
       </main>
-      <footer className="page-shell site-footer">
-        <span>CommerceForge</span>
-        <nav aria-label={dictionary.navigation.contact}>
-          <Link href={`/gallery?lang=${locale}`}>{dictionary.navigation.presets}</Link>
-          <a href="#contact">{dictionary.navigation.contact}</a>
-          <span>{content.footerPrivacy}</span>
-          <span>{content.footerTerms}</span>
-        </nav>
-        <span>{content.footerLegalPlaceholder}</span>
-      </footer>
+      <Footer locale={locale} />
     </>
   );
 }
@@ -400,9 +392,10 @@ function BentoArtwork({ index, dictionary }: { index: number; dictionary: Dictio
 
   if (index === 6) {
     return (
-      <div aria-hidden="true" className="bento-art bento-domain">
+      <div aria-label={`${content.bentoDomain} — ${content.domainBadge}`} className="bento-art bento-domain">
         <Globe2 size={20} />
-        <span>{content.bentoDomain}</span>
+        <span dir="ltr">{content.bentoDomain}</span>
+        <strong>{content.domainBadge}</strong>
         <i />
       </div>
     );

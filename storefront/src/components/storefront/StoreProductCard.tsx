@@ -15,15 +15,22 @@ export function StoreProductCard({
   locale,
   dictionary,
   onAdded,
+  storeSlug = product.storeSlug,
 }: {
   product: MockProduct;
   preset: Preset;
   locale: MockLocale;
   dictionary: Dictionary;
   onAdded: () => void;
+  storeSlug?: string;
 }) {
   const { addItem } = useCart();
-  const productHref = createLocaleHref(`/preview/${preset.id}/product/${product.id}`, { lang: locale }, locale);
+  const productHref = createLocaleHref(
+    `/preview/${preset.id}/product/${product.id}`,
+    { lang: locale, ...(storeSlug ? { store: storeSlug } : {}) },
+    locale,
+  );
+  const cartProduct = storeSlug ? { ...product, storeSlug } : product;
 
   return (
     <article className="product-card">
@@ -49,7 +56,7 @@ export function StoreProductCard({
         <button
           className="button-link"
           onClick={() => {
-            addItem(product);
+            addItem(cartProduct);
             onAdded();
           }}
           type="button"

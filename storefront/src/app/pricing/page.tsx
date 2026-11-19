@@ -5,6 +5,7 @@ import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocument
 import { getDictionary } from "@/i18n/dictionaries";
 import { getAuthUser } from "@/lib/auth";
 import { getLocale, type QueryValues } from "@/i18n/locale";
+import { Footer } from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
   title: "الباقات والأسعار | CommerceForge",
@@ -19,14 +20,11 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
   return (
     <div lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
       <LocaleDocumentAttributes locale={locale} />
-      <LandingHeader basePath="/pricing" dictionary={dictionary} locale={locale} user={user} />
+      <LandingHeader basePath="/pricing" dictionary={dictionary} locale={locale} query={query} user={user} />
       <main>
         <PricingSection content={dictionary.pricing} locale={locale} user={user} />
       </main>
-      <footer className="page-shell site-footer">
-        <a href="/#contact">{dictionary.navigation.contact}</a>
-        <a href={`/templates?lang=${locale}`}>{dictionary.navigation.presets}</a>
-      </footer>
+      <Footer locale={locale} />
     </div>
   );
 }

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Cairo, Plus_Jakarta_Sans } from "next/font/google";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { LocaleSync } from "@/components/storefront/LocaleSync";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { AiAssistantWidget } from "@/components/ai/AiAssistantWidget";
 import "./globals.css";
 
 const arabicFont = Cairo({
@@ -32,10 +34,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${arabicFont.variable} ${englishFont.variable}`}>
+    <html lang="ar" dir="rtl" className={`${arabicFont.variable} ${englishFont.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{var theme=localStorage.getItem('theme')||localStorage.getItem('commerceforge-theme');if(theme==='dark'){document.documentElement.classList.add('dark')}}catch{}",
+          }}
+        />
+      </head>
       <body>
         <LocaleSync />
-        <CartProvider>{children}</CartProvider>
+        <ThemeProvider>
+          <CartProvider>
+            {children}
+            <AiAssistantWidget />
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

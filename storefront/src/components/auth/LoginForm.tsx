@@ -99,8 +99,12 @@ export function LoginForm({ locale, plan, redirectTo, googleEnabled, backendConf
         return;
       }
 
-      const user = (payload as { user?: { role?: string } }).user;
-      router.replace(user?.role === "super_admin" ? redirectTo : "/dashboard/my-store");
+      const user = (payload as { user?: { role?: string; storeSlug?: string | null } }).user;
+      router.replace(
+        user?.role === "super_admin" || (user?.role === "merchant" && !user.storeSlug)
+          ? redirectTo
+          : "/dashboard/my-store",
+      );
       router.refresh();
     } catch {
       setError(text.error);

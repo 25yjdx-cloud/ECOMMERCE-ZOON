@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { DashboardNavigation } from "@/components/dashboard/DashboardNavigation";
-import { getDictionary } from "@/i18n/dictionaries";
 import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: {
@@ -21,15 +21,10 @@ export default async function DashboardLayout({
   if (!user) redirect("/login?lang=ar&redirect=%2Fdashboard%2Fmy-store");
   if (user.role !== "merchant") redirect("/manager/classic?lang=ar");
 
-  const dictionary = getDictionary("ar");
-
   return (
     <div className="dashboard-shell">
-      <header className="dashboard-warning" role="alert">
-        {dictionary.dashboard.warning}
-      </header>
       <div className="dashboard-frame">
-        <DashboardNavigation />
+        <Suspense fallback={null}><DashboardNavigation /></Suspense>
         <div className="dashboard-content">{children}</div>
       </div>
     </div>

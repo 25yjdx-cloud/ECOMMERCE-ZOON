@@ -6,6 +6,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { presets } from "@/lib/presets";
 import type { MockLocale } from "@/mock/types";
 import { getAuthUser } from "@/lib/auth";
+import { Footer } from "@/components/landing/Footer";
 
 type GalleryPageProps = {
   searchParams: Promise<{ lang?: string | string[] }>;
@@ -26,7 +27,7 @@ export default async function GalleryPage({ searchParams }: GalleryPageProps) {
   return (
     <div lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
       <LocaleDocumentAttributes locale={locale} />
-      <LandingHeader basePath="/gallery" dictionary={dictionary} locale={locale} user={user} />
+      <LandingHeader basePath="/gallery" dictionary={dictionary} locale={locale} query={query} user={user} />
       <main className="page-shell">
       <section className="gallery-page-heading" id="presets" aria-labelledby="gallery-title">
         <span className="eyebrow">{dictionary.gallery.eyebrow}</span>
@@ -35,6 +36,7 @@ export default async function GalleryPage({ searchParams }: GalleryPageProps) {
       </section>
       <PresetGallery dictionary={dictionary} locale={locale} presets={presets} user={user} />
       </main>
+      <Footer locale={locale} />
     </div>
   );
 }

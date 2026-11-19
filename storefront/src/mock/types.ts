@@ -13,6 +13,7 @@ export type MockProduct = {
   compareAtPrice?: number;
   badge?: LocalizedText;
   preset: PresetRouteId;
+  storeSlug?: string;
 };
 
 export type PresetMockData = {

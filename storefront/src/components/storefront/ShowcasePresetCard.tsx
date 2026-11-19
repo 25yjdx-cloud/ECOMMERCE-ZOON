@@ -76,7 +76,7 @@ export function ShowcasePresetCard({ preset, locale, dictionary, user = null }: 
               ✎
             </Link>
           ) : (
-            <Link aria-label={gallery.customizeLogin} className="preset-customize-button" href={`/login?lang=${locale}&template=${preset.id}`}>
+            <Link aria-label={gallery.customizeLogin} className="preset-customize-button" href={`/launch?lang=${locale}&template=${preset.id}`}>
               ✎
             </Link>
           )}

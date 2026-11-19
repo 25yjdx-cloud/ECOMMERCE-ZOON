@@ -21,16 +21,24 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const user = await getAuthUser();
   const redirectParam = Array.isArray(query.redirect) ? query.redirect[0] : query.redirect;
   const notice = Array.isArray(query.notice) ? query.notice[0] : query.notice;
+  const template = Array.isArray(query.template) ? query.template[0] : query.template;
   const redirectTo = safeInternalRedirect(
     redirectParam ?? null,
-    user?.role === "super_admin" ? "/manager/classic" : "/dashboard/my-store",
+    user?.role === "super_admin"
+      ? "/manager/classic"
+      : template
+        ? `/launch?template=${encodeURIComponent(template)}&lang=${locale}`
+        : "/dashboard/my-store",
   );
 
   if (user && !(user.role === "merchant" && notice === "owner-only")) {
-    redirect(user.role === "super_admin" ? redirectTo : "/dashboard/my-store");
+    redirect(user.role === "super_admin"
+      ? redirectTo
+      : user.storeSlug || !redirectTo.startsWith("/launch")
+        ? "/dashboard/my-store"
+        : redirectTo);
   }
 
-  const template = Array.isArray(query.template) ? query.template[0] : query.template;
   const plan = Array.isArray(query.plan) ? query.plan[0] : query.plan;
   const oauthComplete = Array.isArray(query.oauth) ? query.oauth[0] : query.oauth;
   const isArabic = locale === "ar";
@@ -39,7 +47,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="auth-page" lang={locale} dir={isArabic ? "rtl" : "ltr"}>
       <LocaleDocumentAttributes locale={locale} />
-      <LandingHeader basePath="/login" dictionary={dictionary} locale={locale} user={user} />
+      <LandingHeader basePath="/login" dictionary={dictionary} locale={locale} query={query} user={user} />
       <section className="auth-content page-shell">
         <div className="auth-intro">
           <span className="eyebrow">{isArabic ? "حساب CommerceForge" : "CommerceForge account"}</span>

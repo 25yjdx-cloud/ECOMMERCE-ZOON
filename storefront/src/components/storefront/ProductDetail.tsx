@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { useCart } from "@/components/cart/CartProvider";
 import type { Dictionary } from "@/i18n/dictionaries";
@@ -22,6 +22,7 @@ import { templateModules } from "@/templates";
 
 export function ProductDetail({
   product,
+  productSlug,
   preset,
   locale,
   dictionary,
@@ -29,6 +30,7 @@ export function ProductDetail({
   user,
 }: {
   product: MockProduct;
+  productSlug: string;
   preset: Preset;
   locale: MockLocale;
   dictionary: Dictionary;
@@ -37,11 +39,58 @@ export function ProductDetail({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
+  const [displayProduct, setDisplayProduct] = useState(product);
   const { addItem, itemCount } = useCart();
   const related = mockData[preset.id].products.filter(({ id }) => id !== product.id).slice(0, 3);
   const storeName = dictionary.store.storeNames[preset.id];
   const store = dictionary.store;
   const template = templateModules[preset.id];
+  const requestedStore = Array.isArray(query.store) ? query.store[0] : query.store;
+
+  useEffect(() => {
+    const storeSlug = String(requestedStore ?? "");
+    if (!storeSlug) return;
+    let active = true;
+
+    async function loadProduct() {
+      try {
+        const response = await fetch(`/api/stores/${encodeURIComponent(storeSlug)}/products`, { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as {
+          data: Array<{
+            id: number;
+            external_id: string | null;
+            name_ar: string;
+            name_en: string;
+            description_ar: string | null;
+            description_en: string | null;
+            category_ar: string | null;
+            category_en: string | null;
+            price: number;
+            old_price: number | null;
+          }>;
+        };
+        const remote = result.data.find((item) => item.external_id === productSlug || String(item.id) === productSlug);
+        if (active && remote) {
+          setDisplayProduct({
+            id: remote.external_id ?? String(remote.id),
+            name: { ar: remote.name_ar, en: remote.name_en },
+            category: { ar: remote.category_ar ?? store.products, en: remote.category_en ?? store.products },
+            description: { ar: remote.description_ar ?? "", en: remote.description_en ?? "" },
+            price: Number(remote.price),
+            ...(remote.old_price ? { compareAtPrice: Number(remote.old_price) } : {}),
+            preset: preset.id,
+            storeSlug,
+          });
+        }
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+      }
+    }
+
+    void loadProduct();
+    return () => { active = false; };
+  }, [productSlug, preset.id, requestedStore, store.products]);
 
   return (
     <div
@@ -80,13 +129,13 @@ export function ProductDetail({
             <ProductArtwork preset={preset.id} productId={product.id} />
           </div>
           <div className="detail-copy">
-            <span className="eyebrow">{product.category[locale]}</span>
-            <h1 className="page-heading">{product.name[locale]}</h1>
-            <p className="page-description">{product.description[locale]}</p>
-            <span className="product-badge">{product.badge?.[locale] ?? dictionary.gallery.badgeNew}</span>
+            <span className="eyebrow">{displayProduct.category[locale]}</span>
+            <h1 className="page-heading">{displayProduct.name[locale]}</h1>
+            <p className="page-description">{displayProduct.description[locale]}</p>
+              <span className="product-badge">{displayProduct.badge?.[locale] ?? dictionary.gallery.badgeNew}</span>
             <div className="product-price-row">
-              <strong>{formatEGP(product.price, locale)}</strong>
-              {product.compareAtPrice && <del>{formatEGP(product.compareAtPrice, locale)}</del>}
+                <strong>{formatEGP(displayProduct.price, locale)}</strong>
+                {displayProduct.compareAtPrice && <del>{formatEGP(displayProduct.compareAtPrice, locale)}</del>}
             </div>
             <label className="quantity-control">
               <span>{store.quantity}</span>
@@ -95,7 +144,7 @@ export function ProductDetail({
             <button
               className="button-link"
               onClick={() => {
-                addItem(product, quantity);
+                addItem(requestedStore ? { ...displayProduct, storeSlug: requestedStore } : displayProduct, quantity);
                 setCartOpen(true);
               }}
               type="button"
@@ -117,6 +166,7 @@ export function ProductDetail({
                 onAdded={() => setCartOpen(true)}
                 preset={preset}
                 product={item}
+                storeSlug={requestedStore}
               />
             ))}
           </div>

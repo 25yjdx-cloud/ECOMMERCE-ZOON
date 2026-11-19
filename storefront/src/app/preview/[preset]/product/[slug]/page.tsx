@@ -32,7 +32,9 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
   if (!preset) notFound();
 
   const product = mockData[preset.id].products.find((item) => item.id === slug);
-  if (!product) notFound();
+  const storeSlug = Array.isArray(query.store) ? query.store[0] : query.store;
+  if (!product && !storeSlug) notFound();
+  const initialProduct = product ?? mockData[preset.id].products[0];
 
   const locale: MockLocale = getLocale(query.lang);
   const user = await getAuthUser();
@@ -41,7 +43,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
       dictionary={getDictionary(locale)}
       locale={locale}
       preset={preset}
-      product={product}
+      product={initialProduct}
+      productSlug={slug}
       query={query}
       user={user}
     />

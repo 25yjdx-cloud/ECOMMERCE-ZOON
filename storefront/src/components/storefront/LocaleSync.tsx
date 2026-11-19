@@ -14,6 +14,7 @@ export function LocaleSync() {
     document.documentElement.lang = locale;
     document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
     window.localStorage.setItem("commerceforge-locale", locale);
+    window.dispatchEvent(new Event("commerceforge:locale-change"));
   }, [pathname]);
 
   return null;

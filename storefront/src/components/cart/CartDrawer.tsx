@@ -83,7 +83,7 @@ export function CartDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          storeSlug: items[0]?.product.preset,
+          storeSlug: items[0]?.product.storeSlug ?? items[0]?.product.preset,
           customer: details,
           items: items.map(({ product, quantity }) => ({
             productId: product.id,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ class CommerceForgeController extends Controller
         $data = $request->validate([
             'store_name' => ['sometimes', 'required', 'string', 'min:2', 'max:120'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
+            'whatsapp' => ['nullable', 'regex:/^01[0125][0-9]{8}$/'],
             'primary_color' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'background_color' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'mode' => ['sometimes', 'required', 'in:light,dark'],
@@ -80,49 +82,114 @@ class CommerceForgeController extends Controller
         $source = DB::table('cf_stores')->where('slug', $slug)->first();
         abort_unless($source, 404);
 
-        $cloneId = DB::transaction(function () use ($data, $source, $request) {
-            $id = DB::table('cf_stores')->insertGetId([
-                'slug' => $data['client_slug'],
-                'template_slug' => $source->template_slug,
-                'owner_user_id' => $request->user()->id,
-                'config' => $source->config,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $cloneId = DB::transaction(fn () => $this->duplicateStoreContents(
+            $source,
+            $data['client_slug'],
+            $request->user()->id,
+            json_decode($source->config, true, flags: JSON_THROW_ON_ERROR),
+        ));
 
-            $categoryIds = [];
-            foreach (DB::table('cf_categories')->where('store_slug', $source->slug)->get() as $category) {
-                $categoryIds[$category->id] = DB::table('cf_categories')->insertGetId([
-                    'store_slug' => $data['client_slug'],
-                    'name_ar' => $category->name_ar,
-                    'name_en' => $category->name_en,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+        return response()->json(['id' => $cloneId, 'slug' => $data['client_slug']], 201);
+    }
 
-            foreach (DB::table('cf_products')->where('store_slug', $source->slug)->get() as $product) {
-                DB::table('cf_products')->insert([
-                    'store_slug' => $data['client_slug'],
-                    'external_id' => $product->external_id,
-                    'category_id' => $product->category_id ? ($categoryIds[$product->category_id] ?? null) : null,
-                    'name_ar' => $product->name_ar,
-                    'name_en' => $product->name_en,
-                    'description_ar' => $product->description_ar,
-                    'description_en' => $product->description_en,
-                    'price' => $product->price,
-                    'old_price' => $product->old_price,
-                    'stock_qty' => $product->stock_qty,
-                    'variants' => $product->variants,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+    public function createMerchantStore(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User && $user->role === 'merchant', 403);
+        abort_if($user->store_slug !== null, 409, 'This account already has a store.');
+
+        $data = $request->validate([
+            'store_slug' => ['required', 'string', 'min:3', 'max:48', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:cf_stores,slug'],
+            'template_slug' => ['required', 'string', 'exists:cf_templates,slug'],
+            'store_name' => ['required', 'string', 'min:2', 'max:120'],
+            'logo_url' => ['nullable', 'url', 'max:2048'],
+            'primary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'whatsapp' => ['required', 'regex:/^01[0125][0-9]{8}$/'],
+            'domain_mode' => ['required', 'in:subdomain,custom'],
+            'custom_domain' => ['nullable', 'string', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/i'],
+        ]);
+
+        abort_unless(
+            DB::table('cf_templates')->where('slug', $data['template_slug'])->where('status', 'live')->exists(),
+            422,
+            'The selected template is not available.',
+        );
+        $source = DB::table('cf_stores')->where('slug', $data['template_slug'])->first();
+        abort_unless($source, 404);
+
+        $config = array_replace_recursive(json_decode($source->config, true, flags: JSON_THROW_ON_ERROR), [
+            'store_name' => trim($data['store_name']),
+            'logo_url' => $data['logo_url'] ?? null,
+            'primary_color' => $data['primary_color'],
+            'whatsapp' => $data['whatsapp'],
+            'plan' => 'free',
+            'domain_mode' => $data['domain_mode'],
+            'domain' => $data['domain_mode'] === 'subdomain'
+                ? $data['store_slug'].'.elmatajer.com'
+                : ($data['custom_domain'] ?? null),
+            'custom_domain_status' => $data['domain_mode'] === 'custom' ? 'pending' : 'active',
+        ]);
+
+        $storeId = DB::transaction(function () use ($source, $data, $config, $user) {
+            $id = $this->duplicateStoreContents($source, $data['store_slug'], $user->id, $config);
+            $user->forceFill(['store_slug' => $data['store_slug']])->save();
 
             return $id;
         });
 
-        return response()->json(['id' => $cloneId, 'slug' => $data['client_slug']], 201);
+        return response()->json([
+            'data' => [
+                'id' => $storeId,
+                'slug' => $data['store_slug'],
+                'domain' => $config['domain'],
+                'plan' => $config['plan'],
+                'custom_domain_status' => $config['custom_domain_status'],
+            ],
+        ], 201);
+    }
+
+    private function duplicateStoreContents(object $source, string $slug, int $ownerId, array $config): int
+    {
+        $now = now();
+        $id = DB::table('cf_stores')->insertGetId([
+            'slug' => $slug,
+            'template_slug' => $source->template_slug,
+            'owner_user_id' => $ownerId,
+            'config' => json_encode($config, JSON_THROW_ON_ERROR),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $categoryIds = [];
+        foreach (DB::table('cf_categories')->where('store_slug', $source->slug)->get() as $category) {
+            $categoryIds[$category->id] = DB::table('cf_categories')->insertGetId([
+                'store_slug' => $slug,
+                'name_ar' => $category->name_ar,
+                'name_en' => $category->name_en,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        foreach (DB::table('cf_products')->where('store_slug', $source->slug)->get() as $product) {
+            DB::table('cf_products')->insert([
+                'store_slug' => $slug,
+                'external_id' => $product->external_id,
+                'category_id' => $product->category_id ? ($categoryIds[$product->category_id] ?? null) : null,
+                'name_ar' => $product->name_ar,
+                'name_en' => $product->name_en,
+                'description_ar' => $product->description_ar,
+                'description_en' => $product->description_en,
+                'price' => $product->price,
+                'old_price' => $product->old_price,
+                'stock_qty' => $product->stock_qty,
+                'variants' => $product->variants,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        return $id;
     }
 
     public function products(string $slug): JsonResponse

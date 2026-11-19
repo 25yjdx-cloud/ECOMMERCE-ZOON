@@ -5,6 +5,8 @@ import type { Preset } from "@/lib/presets";
 import type { MockLocale } from "@/mock/types";
 import type { AuthUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { BackendConnectionStatus } from "./BackendConnectionStatus";
+import { PlatformUtilities } from "@/components/theme/PlatformUtilities";
 
 export function PreviewTopbar({
   dictionary,
@@ -34,7 +36,7 @@ export function PreviewTopbar({
       </div>
       <div className="preview-topbar-center">
         <strong>{preset.name[locale]}</strong>
-        <span className="connection-pending">{dictionary.navigation.backendPending}</span>
+        <BackendConnectionStatus dictionary={dictionary} />
       </div>
       <div className="preview-topbar-actions">
         {user?.role === "super_admin" ? (
@@ -48,11 +50,15 @@ export function PreviewTopbar({
             <LogoutButton label={dictionary.navigation.logout} locale={locale} />
           </>
         ) : user?.role === "merchant" ? (
-          <Link href={createLocaleHref("/dashboard/my-store", query, locale)}>
-            {dictionary.navigation.myStore}
+          <Link href={createLocaleHref(
+            user.storeSlug ? "/dashboard/my-store" : "/launch",
+            { ...query, ...(!user.storeSlug ? { template: preset.id } : {}) },
+            locale,
+          )}>
+            {user.storeSlug ? dictionary.navigation.myStore : dictionary.navigation.startWithTemplate}
           </Link>
         ) : (
-          <Link href={createLocaleHref("/login", { ...query, template: preset.id }, locale)}>
+          <Link href={createLocaleHref("/launch", { ...query, template: preset.id }, locale)}>
             {dictionary.navigation.startWithTemplate}
           </Link>
         )}
@@ -61,12 +67,14 @@ export function PreviewTopbar({
             {dictionary.navigation.login}
           </Link>
         )}
-        <Link href={createLocaleHref(currentPath, query, "ar")}>
-          {dictionary.navigation.languageArabic}
-        </Link>
-        <Link href={createLocaleHref(currentPath, query, "en")}>
-          {dictionary.navigation.languageEnglish}
-        </Link>
+        <PlatformUtilities
+          compact
+          currentPath={currentPath}
+          locale={locale}
+          profileHref={user?.role === "merchant" ? "/dashboard/my-store" : "/login"}
+          query={query}
+          user={user}
+        />
       </div>
     </nav>
   );
