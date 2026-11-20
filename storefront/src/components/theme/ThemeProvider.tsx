@@ -13,7 +13,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = window.localStorage.getItem("theme") ?? window.localStorage.getItem("commerceforge-theme");
     const nextTheme: Theme = stored === "dark" ? "dark" : "light";
-    setTheme(nextTheme);
+    void Promise.resolve().then(() => setTheme(nextTheme));
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
     document.documentElement.style.colorScheme = nextTheme;
     window.localStorage.setItem("theme", nextTheme);

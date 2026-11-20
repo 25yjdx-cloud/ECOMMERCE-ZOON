@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import Image from "next/image";
 
 type Product = {
   id: string;
@@ -124,7 +125,7 @@ export default function ClassicStandalone({ locale = "ar" }: { locale?: Locale }
         .cf-classic .drawer-panel>.primary:last-child{position:sticky;bottom:-1rem;z-index:2;margin-top:auto}
       `}</style>
       <header className="top">
-        <div className="brand"><img alt="" src={STORE_CONFIG.logoUrl} /><span>{ar ? STORE_CONFIG.name : STORE_CONFIG.nameEn}</span></div>
+        <div className="brand"><Image alt="" height={48} src={STORE_CONFIG.logoUrl} unoptimized width={48} /><span>{ar ? STORE_CONFIG.name : STORE_CONFIG.nameEn}</span></div>
         <div>
           <button onClick={() => { setVariants({}); setLanguage(ar ? "en" : "ar"); }} type="button">{ar ? "EN" : "عربي"}</button>{" "}
           <button onClick={() => setCartOpen(true)} type="button">{ar ? "السلة" : "Cart"} ({cart.reduce((sum, line) => sum + line.quantity, 0)})</button>
@@ -141,7 +142,7 @@ export default function ClassicStandalone({ locale = "ar" }: { locale?: Locale }
         </div>
         <div className="grid">{visibleProducts.map((product) => (
           <article className="card" key={product.id}>
-            <img alt={ar ? product.name : product.nameEn} loading="lazy" src={product.image} />
+            <Image alt={ar ? product.name : product.nameEn} height={300} loading="lazy" src={product.image} unoptimized width={400} />
             <div className="card-body"><span className="muted">{ar ? product.category : product.categoryEn}</span><h3>{ar ? product.name : product.nameEn}</h3><strong>{money(product.price)}</strong>
               <div><select aria-label={ar ? "اختر المقاس واللون" : "Choose size and color"} onChange={(event) => setVariants((current) => ({ ...current, [product.id]: event.target.value }))} value={variants[product.id] ?? (ar ? product.variants[0] : product.variantsEn[0])}>{(ar ? product.variants : product.variantsEn).map((item) => <option key={item}>{item}</option>)}</select></div>
               <button className="primary" onClick={() => addProduct(product)} type="button">{ar ? "أضف إلى السلة" : "Add to cart"}</button>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { useCart } from "@/components/cart/CartProvider";
@@ -24,6 +25,7 @@ import {
   type StorePayload,
 } from "@/lib/store-payload";
 import { StorePixelTracking } from "./StorePixelTracking";
+import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 import type { CSSProperties } from "react";
 
 export function StorePreview({
@@ -187,11 +189,12 @@ export function StorePreview({
             : `/preview/${preset.id}?${new URLSearchParams({ lang: locale, ...(requestedStore ? { store: requestedStore } : {}) }).toString()}`}
         >
           {storePayload.logoUrl
-            ? <img alt="" className="store-logo" src={storePayload.logoUrl} />
+            ? <Image alt="" className="store-logo" height={32} src={storePayload.logoUrl} unoptimized width={32} />
             : <span aria-hidden="true" className="store-logo-fallback">{storePayload.storeName.trim().charAt(0) || "S"}</span>}
           <span>{storePayload.storeName}</span>
         </Link>
         <div className="store-topbar-actions">
+          {isLiveStore && <WorldQuickSwitcher locale={locale} storeSlug={storeSlug} user={user} />}
           <label className="visually-hidden" htmlFor="store-search">{store.search}</label>
           <input
             className="store-search"
@@ -264,6 +267,16 @@ export function StorePreview({
       </main>
       <footer className="page-shell site-footer">
         <span>{storePayload.storeName}</span>
+        {isLiveStore && (
+          <nav aria-label={locale === "ar" ? "روابط المتجر" : "Store links"}>
+            <Link href={`/s/${encodeURIComponent(storeSlug)}/track?lang=${locale}`}>
+              {locale === "ar" ? "تتبع طلبك" : "Track your order"}
+            </Link>
+            <Link href={`/s/${encodeURIComponent(storeSlug)}/returns?lang=${locale}`}>
+              {locale === "ar" ? "الاستبدال والاسترجاع" : "Returns & exchange"}
+            </Link>
+          </nav>
+        )}
       </footer>
       <CartDrawer
         dictionary={dictionary}

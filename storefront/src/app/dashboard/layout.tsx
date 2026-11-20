@@ -3,6 +3,7 @@ import { DashboardNavigation } from "@/components/dashboard/DashboardNavigation"
 import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { DashboardWorldShell } from "@/components/dashboard/DashboardWorldShell";
 
 export const metadata: Metadata = {
   title: {
@@ -23,10 +24,12 @@ export default async function DashboardLayout({
 
   return (
     <div className="dashboard-shell">
-      <div className="dashboard-frame">
-        <Suspense fallback={null}><DashboardNavigation /></Suspense>
-        <div className="dashboard-content">{children}</div>
-      </div>
+      <DashboardWorldShell user={user}>
+        <div className="dashboard-frame">
+          <Suspense fallback={null}><DashboardNavigation /></Suspense>
+          <div className="dashboard-content">{children}</div>
+        </div>
+      </DashboardWorldShell>
     </div>
   );
 }

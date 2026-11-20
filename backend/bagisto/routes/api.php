@@ -18,6 +18,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     Route::get('/stores/{slug}/build-payload', [CommerceForgeController::class, 'buildPayload']);
     Route::post('/orders', [CommerceForgeController::class, 'createOrder'])->middleware('throttle:10,1');
     Route::post('/orders/track', [CommerceForgeController::class, 'trackOrder'])->middleware('throttle:5,1');
+    Route::post('/stores/{slug}/returns', [CommerceForgeController::class, 'createReturnRequest'])->middleware('throttle:5,1');
     Route::post('/quote-requests', [CommerceForgeController::class, 'createQuote'])->middleware('throttle:5,1');
     Route::post('/leads', [CommerceForgeController::class, 'createQuote'])->middleware('throttle:5,1');
     Route::post('/webhooks/shipping/{provider}', [ShippingController::class, 'webhook'])
@@ -82,3 +83,7 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     Route::middleware(['auth:sanctum', EnsureOwnsStore::class])
         ->get('/stores/{slug}/access-check', fn () => response()->json(['authorized' => true]));
 });
+
+    Route::post('/webhooks/shipping/{provider}', [ShippingController::class, 'webhook'])
+        ->middleware('throttle:120,1')
+        ->whereIn('provider', ['bosta', 'oto']);

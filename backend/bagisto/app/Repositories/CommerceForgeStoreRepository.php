@@ -6,22 +6,33 @@ use Illuminate\Support\Facades\DB;
 
 class CommerceForgeStoreRepository
 {
-    public function trackOrder(string $orderNumber, string $phone): ?array
+    public function trackOrder(string $storeSlug, string $orderNumber, string $phone): ?array
     {
         $order = DB::table('cf_orders')
+            ->where('store_slug', $storeSlug)
             ->where('order_number', $orderNumber)
             ->where('phone', $phone)
-            ->first(['order_number', 'status', 'created_at', 'total']);
+            ->first(['id', 'order_number', 'status', 'created_at', 'updated_at', 'total']);
 
         if (! $order) {
             return null;
         }
 
+        $shipment = DB::table('cf_shipments')
+            ->where('store_slug', $storeSlug)
+            ->where('order_id', $order->id)
+            ->orderByDesc('id')
+            ->first(['provider', 'status', 'tracking_number', 'updated_at']);
+
         return [
             'order_number' => $order->order_number,
             'status' => $order->status,
             'created_at' => $order->created_at,
+            'updated_at' => $shipment?->updated_at ?? $order->updated_at,
             'total' => $order->total,
+            'shipping_provider' => $shipment?->provider,
+            'shipment_status' => $shipment?->status,
+            'tracking_number' => $shipment?->tracking_number,
         ];
     }
 

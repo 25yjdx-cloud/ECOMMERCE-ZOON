@@ -25,9 +25,6 @@ export function Footer({ locale }: { locale: MockLocale }) {
           <Link className="footer-primary-cta" href={`/login?lang=${locale}`}>
             {isArabic ? "ابدأ مجاناً ←" : "Start for free →"}
           </Link>
-          <a className="footer-whatsapp-button" href="https://wa.me/201145335168" rel="noreferrer" target="_blank">
-            {isArabic ? "تواصل عبر واتساب" : "Contact us on WhatsApp"}
-          </a>
         </div>
       </div>
       <div className="platform-footer-grid">
@@ -53,20 +50,12 @@ export function Footer({ locale }: { locale: MockLocale }) {
           </ul>
         </section>
         <section>
-          <h3>{isArabic ? "المنصة والحساب" : "Platform & account"}</h3>
+          <h3>{isArabic ? "المنصة" : "Platform"}</h3>
           <ul>
             <li><Link href={`/?lang=${locale}`}>{isArabic ? "الرئيسية" : "Home"}</Link></li>
             <li><Link href={`/#pricing`}>{isArabic ? "الباقات والأسعار" : "Plans & pricing"}</Link></li>
-            <li><Link href={`/account?lang=${locale}`}>{isArabic ? "إعدادات الحساب" : "Account settings"}</Link></li>
-            <li><Link href={`/notifications?lang=${locale}`}>{isArabic ? "الإشعارات" : "Notifications"}</Link></li>
-            <li><Link href={`/track-order?lang=${locale}`}>{isArabic ? "تتبع الطلب" : "Track an order"}</Link></li>
-          </ul>
-        </section>
-        <section>
-          <h3>{isArabic ? "تواصل مباشر" : "Direct contact"}</h3>
-          <ul>
-            <li><a href="https://wa.me/201145335168" rel="noreferrer" target="_blank">{isArabic ? "واتساب" : "WhatsApp"}</a></li>
-            <li><Link href="/#contact">{isArabic ? "اطلب عرض سعر" : "Request a quote"}</Link></li>
+            <li><Link href={`/login?lang=${locale}`}>{isArabic ? "تسجيل الدخول" : "Log in"}</Link></li>
+            <li><Link href={`/login?lang=${locale}`}>{isArabic ? "ابدأ مجاناً" : "Start for free"}</Link></li>
           </ul>
         </section>
       </div>

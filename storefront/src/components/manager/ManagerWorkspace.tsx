@@ -143,7 +143,7 @@ export function ManagerWorkspace({
   }, [base]);
 
   useEffect(() => {
-    void loadTab(tab);
+    void Promise.resolve().then(() => loadTab(tab));
   }, [loadTab, tab]);
 
   async function saveConfig(event: FormEvent<HTMLFormElement>) {

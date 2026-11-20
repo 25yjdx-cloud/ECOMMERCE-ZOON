@@ -18,6 +18,7 @@ import { PreviewTopbar } from "./PreviewTopbar";
 import { ProductArtwork } from "./ProductArtwork";
 import { StoreProductCard } from "./StoreProductCard";
 import { templateModules } from "@/templates";
+import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 
 export function ProductDetail({
   product,
@@ -142,6 +143,9 @@ export function ProductDetail({
           <span>{storeName}</span>
         </Link>
         <div className="store-topbar-actions">
+          {isLiveStore && requestedStore && (
+            <WorldQuickSwitcher locale={locale} storeSlug={requestedStore} user={user} />
+          )}
           <Link
             className="button-link"
             href={createLocaleHref(
@@ -208,6 +212,19 @@ export function ProductDetail({
           </div>
         </section>
       </main>
+      {isLiveStore && requestedStore && (
+        <footer className="page-shell site-footer">
+          <span>{storeName}</span>
+          <nav aria-label={locale === "ar" ? "روابط المتجر" : "Store links"}>
+            <Link href={`/s/${encodeURIComponent(requestedStore)}/track?lang=${locale}`}>
+              {locale === "ar" ? "تتبع طلبك" : "Track your order"}
+            </Link>
+            <Link href={`/s/${encodeURIComponent(requestedStore)}/returns?lang=${locale}`}>
+              {locale === "ar" ? "الاستبدال والاسترجاع" : "Returns & exchange"}
+            </Link>
+          </nav>
+        </footer>
+      )}
       <CartDrawer dictionary={dictionary} locale={locale} onClose={() => setCartOpen(false)} open={cartOpen} />
       {!isLiveStore && (
         <PreviewSwitcher

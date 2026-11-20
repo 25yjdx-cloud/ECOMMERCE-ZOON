@@ -14,6 +14,7 @@ class TrackOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'store_slug' => ['required', 'string', 'exists:cf_stores,slug'],
             'order_number' => ['required', 'string', 'min:6', 'max:32'],
             'phone' => ['required', 'regex:/^01[0125][0-9]{8}$/'],
         ];

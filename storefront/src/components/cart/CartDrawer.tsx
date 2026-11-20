@@ -109,9 +109,6 @@ export function CartDrawer({
     }
   }
 
-  const shippingAgreement = isArabic
-    ? "يُعتمد مع شركة الشحن وموافقة العميل أولاً"
-    : "Confirmed with the carrier and customer first";
   const shippingNote = isArabic
     ? "تكلفة الشحن والنقل تُحدّد وتُعتمد مع شركة الشحن وموافقة العميل قبل التأكيد النهائي"
     : "Shipping and transport costs are agreed with the carrier and customer before final confirmation.";

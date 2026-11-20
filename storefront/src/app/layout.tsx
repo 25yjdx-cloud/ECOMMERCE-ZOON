@@ -7,6 +7,7 @@ import { AiAssistantWidget } from "@/components/ai/AiAssistantWidget";
 import { Preloader } from "@/components/brand/Preloader";
 import { WelcomeModal } from "@/components/brand/WelcomeModal";
 import { HybridWorkflowModal } from "@/components/landing/HybridWorkflowModal";
+import Script from "next/script";
 import "./globals.css";
 
 const arabicFont = Cairo({
@@ -30,8 +31,8 @@ export const metadata: Metadata = {
   },
   description: "معرض قوالب CommerceForge ومعاينات المتاجر التجريبية.",
   icons: {
-    icon: "/icon.svg",
-    apple: "/apple-icon.svg",
+    icon: "/assets/platform-icon.svg",
+    apple: "/assets/platform-icon.svg",
   },
   openGraph: {
     title: "CommerceForge | من الفكرة إلى متجرك",
@@ -52,13 +53,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${arabicFont.variable} ${englishFont.variable}`} suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={`${arabicFont.variable} ${englishFont.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: "try{var theme=localStorage.getItem('theme')||localStorage.getItem('commerceforge-theme');if(theme==='dark'){document.documentElement.classList.add('dark')}}catch{}",
-          }}
-        />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {"try{var theme=localStorage.getItem('theme')||localStorage.getItem('commerceforge-theme');if(theme==='dark'){document.documentElement.classList.add('dark')}}catch{}"}
+        </Script>
       </head>
       <body>
         <LocaleSync />

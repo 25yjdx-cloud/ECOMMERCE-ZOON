@@ -102,6 +102,89 @@ class CommerceForgeTestAccountsSeeder extends Seeder
                     ],
                 );
             }
+
+            $demoProduct = DB::table('cf_products')
+                ->where('store_slug', 'demo')
+                ->orderBy('id')
+                ->first();
+            if (! $demoProduct) {
+                throw new \RuntimeException('Demo products must be seeded before sample orders.');
+            }
+
+            foreach ([
+                ['number' => 'CF-DEMO-0001', 'status' => 'new', 'days' => 0],
+                ['number' => 'CF-DEMO-0002', 'status' => 'processing', 'days' => 1],
+                ['number' => 'CF-DEMO-0003', 'status' => 'shipped', 'days' => 2],
+                ['number' => 'CF-DEMO-0004', 'status' => 'delivered', 'days' => 3],
+            ] as $sampleOrder) {
+                $createdAt = now()->subDays($sampleOrder['days']);
+                DB::table('cf_orders')->updateOrInsert(
+                    ['order_number' => $sampleOrder['number']],
+                    [
+                        'store_slug' => 'demo',
+                        'customer_name' => 'عميل تجريبي',
+                        'phone' => '01000000000',
+                        'governorate' => 'Cairo',
+                        'address' => 'عنوان تجريبي غير حقيقي',
+                        'items' => json_encode([[
+                            'product_id' => $demoProduct->id,
+                            'name_ar' => $demoProduct->name_ar,
+                            'name_en' => $demoProduct->name_en,
+                            'quantity' => 1,
+                            'unit_price' => $demoProduct->price,
+                            'line_total' => $demoProduct->price,
+                        ]], JSON_THROW_ON_ERROR),
+                        'subtotal' => $demoProduct->price,
+                        'shipping_fee' => 0,
+                        'total' => $demoProduct->price,
+                        'status' => $sampleOrder['status'],
+                        'updated_at' => $createdAt,
+                        'created_at' => $createdAt,
+                    ],
+                );
+            }
+
+            foreach ([
+                [
+                    'event_key' => 'demo:store-created:merchant',
+                    'recipient_user_id' => $merchant->id,
+                    'recipient_role' => null,
+                    'store_slug' => 'demo',
+                    'type' => 'store_created',
+                    'title_ar' => 'تم تسجيل متجرك التجريبي',
+                    'title_en' => 'Your demo store is ready',
+                    'body_ar' => 'يمكنك الآن مراجعة المنتجات والطلبات التجريبية.',
+                    'body_en' => 'You can now review the sample products and orders.',
+                ],
+                [
+                    'event_key' => 'demo:store-created:platform',
+                    'recipient_user_id' => null,
+                    'recipient_role' => 'super_admin',
+                    'store_slug' => 'demo',
+                    'type' => 'store_registered',
+                    'title_ar' => 'متجر تجريبي جاهز',
+                    'title_en' => 'Demo store is ready',
+                    'body_ar' => 'تم تجهيز متجر demo بمنتجات وطلبات تجريبية.',
+                    'body_en' => 'The demo store has sample products and orders.',
+                ],
+                [
+                    'event_key' => 'demo:order-created',
+                    'recipient_user_id' => null,
+                    'recipient_role' => 'store_member',
+                    'store_slug' => 'demo',
+                    'type' => 'new_order',
+                    'title_ar' => 'طلب تجريبي جديد',
+                    'title_en' => 'New sample order',
+                    'body_ar' => 'يوجد طلب تجريبي لمراجعته في لوحة المتجر.',
+                    'body_en' => 'A sample order is ready to review in the store dashboard.',
+                ],
+            ] as $notification) {
+                DB::table('cf_notifications')->insertOrIgnore([
+                    ...$notification,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         });
     }
 }

@@ -71,7 +71,7 @@ export function useNotifications(locale: MockLocale) {
   }, [locale]);
 
   useEffect(() => {
-    void load();
+    void Promise.resolve().then(load);
     const interval = window.setInterval(() => void load(), 30_000);
     window.addEventListener("focus", load);
 

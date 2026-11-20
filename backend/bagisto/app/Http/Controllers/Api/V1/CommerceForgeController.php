@@ -10,6 +10,7 @@ use App\Http\Requests\CommerceForge\CloneStoreRequest;
 use App\Http\Requests\CommerceForge\CreateMerchantStoreRequest;
 use App\Http\Requests\CommerceForge\CreateOrderRequest;
 use App\Http\Requests\CommerceForge\CreateQuoteRequest;
+use App\Http\Requests\CommerceForge\CreateReturnRequest;
 use App\Http\Requests\CommerceForge\ProductRequest;
 use App\Http\Requests\CommerceForge\UpdateOrderStatusRequest;
 use App\Http\Requests\CommerceForge\UpdateRefinementStatusRequest;
@@ -59,10 +60,34 @@ class CommerceForgeController extends Controller
     public function trackOrder(TrackOrderRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $order = $this->storeRepository->trackOrder($data['order_number'], $data['phone']);
+        $order = $this->storeRepository->trackOrder($data['store_slug'], $data['order_number'], $data['phone']);
         abort_unless($order, 404, 'Order not found.');
 
         return response()->json(['data' => $order]);
+    }
+
+    public function createReturnRequest(CreateReturnRequest $request, string $slug): JsonResponse
+    {
+        $data = $request->validated();
+        $order = DB::table('cf_orders')
+            ->where('store_slug', $slug)
+            ->where('order_number', $data['order_number'])
+            ->where('phone', $data['phone'])
+            ->first(['id']);
+        abort_unless($order, 404, 'Order not found.');
+
+        $id = DB::table('cf_return_requests')->insertGetId([
+            'store_slug' => $slug,
+            'order_id' => $order->id,
+            'order_number' => $data['order_number'],
+            'phone' => $data['phone'],
+            'reason' => $data['reason'],
+            'status' => 'new',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['data' => ['id' => $id, 'status' => 'new']], 201);
     }
 
     public function templates(): JsonResponse

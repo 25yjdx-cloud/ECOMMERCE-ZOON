@@ -7,6 +7,7 @@ import type { MockLocale } from "@/mock/types";
 import { getAuthUser } from "@/lib/auth";
 import { ManagerWorkspace } from "@/components/manager/ManagerWorkspace";
 import { PreviewTopbar } from "@/components/storefront/PreviewTopbar";
+import { Footer } from "@/components/landing/Footer";
 
 type ManagerPageProps = {
   params: Promise<{ slug: string }>;
@@ -72,6 +73,7 @@ export default async function ManagerPage({ params, searchParams }: ManagerPageP
         </section>
         <ManagerWorkspace locale={locale} slug={preset.id} />
       </main>
+      <Footer locale={locale} />
     </div>
   );
 }

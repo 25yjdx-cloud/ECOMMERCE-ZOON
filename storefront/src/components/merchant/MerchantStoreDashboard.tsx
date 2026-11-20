@@ -414,7 +414,7 @@ export function MerchantStoreDashboard({
   }, [slug, text.loadError]);
 
   useEffect(() => {
-    void load();
+    void Promise.resolve().then(load);
   }, [load]);
 
   const refreshData = useCallback(() => {

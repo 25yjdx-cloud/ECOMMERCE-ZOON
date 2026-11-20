@@ -3849,10 +3849,7 @@ html[data-theme="dark"] .manager-connection {
 }
 
 .auth-intro {
-  border-radius: var(--radius-card);
-  background: linear-gradient(145deg, #171512, #30291f);
-  box-shadow: var(--shadow-soft);
-  padding: clamp(1.5rem, 4vw, 2.5rem);
+  padding-block: 0.5rem;
 }
 
 .auth-intro .auth-brand-title {
@@ -3869,7 +3866,7 @@ html[data-theme="dark"] .manager-connection {
 
 .auth-intro .auth-welcome-title {
   margin: 0.75rem 0;
-  color: #fff;
+  color: var(--text-main);
   font-size: clamp(1.75rem, 3vw, 2.4rem);
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -3882,7 +3879,28 @@ html[data-theme="dark"] .manager-connection {
 }
 
 .auth-intro > p:not(.auth-brand-title) {
-  color: rgb(255 255 255 / 78%);
+  color: var(--text-secondary);
+}
+
+.storefront-utility-page .store-topbar {
+  position: relative;
+}
+
+.storefront-utility-page .store-topbar-actions,
+.storefront-utility-page .site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.store-back-link {
+  display: inline-flex;
+  margin-block: 1.25rem 0.5rem;
+}
+
+.return-request-form {
+  max-width: 38rem;
 }
 
 .auth-card {
@@ -6886,7 +6904,7 @@ html[data-theme="dark"] .ai-assistant-mark .cf-logo-svg {
 
 .tracking-milestones {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.5rem;
   margin: 0.5rem 0;
   padding: 0;
@@ -6948,6 +6966,7 @@ html[data-theme="dark"] .ai-assistant-mark .cf-logo-svg {
   }
 
   .tracking-milestones {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.25rem;
   }
 
