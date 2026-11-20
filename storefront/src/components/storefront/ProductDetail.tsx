@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { useCart } from "@/components/cart/CartProvider";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { formatEGP } from "@/i18n/format";
 import type { QueryValues } from "@/i18n/locale";
 import type { Preset } from "@/lib/presets";
 import { presets } from "@/lib/presets";
@@ -28,6 +27,10 @@ export function ProductDetail({
   dictionary,
   query,
   user,
+  isLiveStore = false,
+  relatedProducts,
+  storeName: storeNameOverride,
+  currency = "EGP",
 }: {
   product: MockProduct;
   productSlug: string;
@@ -36,18 +39,31 @@ export function ProductDetail({
   dictionary: Dictionary;
   query: QueryValues;
   user: AuthUser | null;
+  isLiveStore?: boolean;
+  relatedProducts?: MockProduct[];
+  storeName?: string;
+  currency?: "EGP" | "SAR";
 }) {
   const [quantity, setQuantity] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [displayProduct, setDisplayProduct] = useState(product);
   const { addItem, itemCount } = useCart();
-  const related = mockData[preset.id].products.filter(({ id }) => id !== product.id).slice(0, 3);
-  const storeName = dictionary.store.storeNames[preset.id];
+  const related = (relatedProducts ?? mockData[preset.id].products)
+    .filter(({ id }) => id !== product.id)
+    .slice(0, 3);
+  const storeName = storeNameOverride ?? dictionary.store.storeNames[preset.id];
   const store = dictionary.store;
   const template = templateModules[preset.id];
   const requestedStore = Array.isArray(query.store) ? query.store[0] : query.store;
+  const formattedPrice = new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  });
 
   useEffect(() => {
+    if (isLiveStore) return;
+
     const storeSlug = String(requestedStore ?? "");
     if (!storeSlug) return;
     let active = true;
@@ -90,7 +106,7 @@ export function ProductDetail({
 
     void loadProduct();
     return () => { active = false; };
-  }, [productSlug, preset.id, requestedStore, store.products]);
+  }, [isLiveStore, productSlug, preset.id, requestedStore, store.products]);
 
   return (
     <div
@@ -102,22 +118,40 @@ export function ProductDetail({
       style={{ accentColor: template.accent }}
     >
       <LocaleDocumentAttributes locale={locale} />
-      <PreviewTopbar
-        dictionary={dictionary}
-        locale={locale}
-        pathname={`/preview/${preset.id}/product/${product.id}`}
-        preset={preset}
-        query={query}
-        user={user}
-      />
+      {!isLiveStore && (
+        <PreviewTopbar
+          dictionary={dictionary}
+          locale={locale}
+          pathname={`/preview/${preset.id}/product/${product.id}`}
+          preset={preset}
+          query={query}
+          user={user}
+        />
+      )}
       {preset.id === "nabd" && <div className="store-announcement">{store.nabdAnnouncement}</div>}
       <header className="store-topbar">
-        <Link className="brand-mark" href={createLocaleHref(`/preview/${preset.id}`, query, locale)}>
+        <Link
+          className="brand-mark"
+          href={createLocaleHref(
+            isLiveStore && requestedStore ? `/s/${encodeURIComponent(requestedStore)}` : `/preview/${preset.id}`,
+            query,
+            locale,
+          )}
+        >
           <span aria-hidden="true" className="brand-symbol">C</span>
           <span>{storeName}</span>
         </Link>
         <div className="store-topbar-actions">
-          <Link className="button-link" href={createLocaleHref(`/preview/${preset.id}`, query, locale)}>{dictionary.navigation.storeHome}</Link>
+          <Link
+            className="button-link"
+            href={createLocaleHref(
+              isLiveStore && requestedStore ? `/s/${encodeURIComponent(requestedStore)}` : `/preview/${preset.id}`,
+              query,
+              locale,
+            )}
+          >
+            {dictionary.navigation.storeHome}
+          </Link>
           <button className="button-link" onClick={() => setCartOpen(true)} type="button">
             {store.cart} ({itemCount})
           </button>
@@ -134,8 +168,8 @@ export function ProductDetail({
             <p className="page-description">{displayProduct.description[locale]}</p>
               <span className="product-badge">{displayProduct.badge?.[locale] ?? dictionary.gallery.badgeNew}</span>
             <div className="product-price-row">
-                <strong>{formatEGP(displayProduct.price, locale)}</strong>
-                {displayProduct.compareAtPrice && <del>{formatEGP(displayProduct.compareAtPrice, locale)}</del>}
+                <strong>{formattedPrice.format(displayProduct.price)}</strong>
+                {displayProduct.compareAtPrice && <del>{formattedPrice.format(displayProduct.compareAtPrice)}</del>}
             </div>
             <label className="quantity-control">
               <span>{store.quantity}</span>
@@ -166,22 +200,26 @@ export function ProductDetail({
                 onAdded={() => setCartOpen(true)}
                 preset={preset}
                 product={item}
+                currency={currency}
                 storeSlug={requestedStore}
+                isLiveStore={isLiveStore}
               />
             ))}
           </div>
         </section>
       </main>
       <CartDrawer dictionary={dictionary} locale={locale} onClose={() => setCartOpen(false)} open={cartOpen} />
-      <PreviewSwitcher
-        activePreset={preset}
-        dictionary={dictionary}
-        locale={locale}
-        pathname={`/preview/${preset.id}/product/${product.id}`}
-        presets={presets}
-        productDetail
-        query={query}
-      />
+      {!isLiveStore && (
+        <PreviewSwitcher
+          activePreset={preset}
+          dictionary={dictionary}
+          locale={locale}
+          pathname={`/preview/${preset.id}/product/${product.id}`}
+          presets={presets}
+          productDetail
+          query={query}
+        />
+      )}
     </div>
   );
 }

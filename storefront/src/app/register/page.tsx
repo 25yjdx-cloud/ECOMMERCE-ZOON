@@ -44,8 +44,8 @@ export default async function RegisterPage({
       <LandingHeader basePath="/register" dictionary={dictionary} locale={locale} query={query} user={null} />
       <section className="auth-content page-shell">
         <div className="auth-intro">
-          <span className="eyebrow">{isArabic ? "حساب CommerceForge" : "CommerceForge account"}</span>
-          <h1>{isArabic ? "أنشئ حسابك وابدأ متجرك" : "Create your account and start your store"}</h1>
+          <p className="auth-brand-title">{isArabic ? "حساب CommerceForge" : "CommerceForge Account"}</p>
+          <h1 className="auth-welcome-title">{isArabic ? "أنشئ حسابك وابدأ متجرك" : "Create your account and start your store"}</h1>
           <p>
             {isArabic
               ? "أكمل بياناتك أو تابع باستخدام Google، ثم ابدأ تجربتك المجانية لمدة 14 يوم."

@@ -4,6 +4,7 @@ import { MerchantStoreDashboard } from "@/components/merchant/MerchantStoreDashb
 import { getAuthUser } from "@/lib/auth";
 import { getLocale, type QueryValues } from "@/i18n/locale";
 import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocumentAttributes";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export default async function MyStorePage({ searchParams }: { searchParams: Promise<QueryValues> }) {
   const query = await searchParams;
@@ -18,6 +19,7 @@ export default async function MyStorePage({ searchParams }: { searchParams: Prom
   return (
     <main className="dashboard-page">
       <LocaleDocumentAttributes locale={locale} />
+      <NotificationBell locale={locale} />
       <span className="eyebrow">CommerceForge</span>
       <h1>{isArabic ? "متجري" : "My store"}</h1>
       <p className="dashboard-description">
@@ -33,7 +35,7 @@ export default async function MyStorePage({ searchParams }: { searchParams: Prom
         </p>
       )}
       {user.storeSlug ? (
-        <MerchantStoreDashboard locale={locale} slug={user.storeSlug} />
+        <MerchantStoreDashboard locale={locale} memberRole={user.memberRole ?? null} slug={user.storeSlug} />
       ) : (
         <section className="dashboard-panel" role="status">
           <h2>{isArabic ? "لا يوجد متجر مرتبط بالحساب بعد" : "No store is linked to this account yet"}</h2>

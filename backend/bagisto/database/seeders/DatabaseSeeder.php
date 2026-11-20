@@ -16,5 +16,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(BagistoDatabaseSeeder::class);
         $this->call(CommerceForgeSeeder::class);
+
+        if ($this->app->environment(['local', 'testing'])) {
+            $this->call(CommerceForgeTestAccountsSeeder::class);
+        }
     }
 }

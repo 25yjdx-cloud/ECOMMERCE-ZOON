@@ -18,6 +18,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'member_role',
         'store_slug',
         'google_id',
         'two_factor_secret',

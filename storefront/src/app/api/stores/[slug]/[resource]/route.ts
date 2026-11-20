@@ -5,7 +5,7 @@ type RouteContext = { params: Promise<{ slug: string; resource: string }> };
 
 async function forward(_request: Request, context: RouteContext) {
   const { slug, resource } = await context.params;
-  const allowed = resource === "config" || resource === "products";
+  const allowed = resource === "config" || resource === "products" || resource === "build-payload";
   if (!allowed) return NextResponse.json({ message: "Not found." }, { status: 404 });
 
   const response = await fetch(getBackendAuthUrl(`api/v1/stores/${encodeURIComponent(slug)}/${resource}`), {

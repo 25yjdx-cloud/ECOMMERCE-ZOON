@@ -7,7 +7,7 @@ export const fashionTemplate = {
   id: "fashion",
   accent: "#D4AF37",
   surface: "#121212",
-  Details({ locale }: TemplateModuleProps) {
+  Details({ locale, store }: TemplateModuleProps) {
     const [color, setColor] = useState("sand");
     const [size, setSize] = useState("M");
     const sizes = ["S", "M", "L", "XL"];
@@ -36,6 +36,15 @@ export const fashionTemplate = {
             <button aria-pressed={size === item} key={item} onClick={() => setSize(item)} type="button">{item}</button>
           ))}
         </div>
+        {store.products[0] && (
+          <p className="template-live-product">
+            {store.products[0].name[locale]} · {new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
+              style: "currency",
+              currency: store.currency,
+              maximumFractionDigits: 0,
+            }).format(store.products[0].price)}
+          </p>
+        )}
         <details className="template-size-guide">
           <summary>{locale === "ar" ? "اعرفي مقاسك" : "Find your size"}</summary>
           <p>{locale === "ar" ? "يرجى مراجعة جدول المقاسات قبل إتمام الطلب." : "Check the size chart before placing an order."}</p>

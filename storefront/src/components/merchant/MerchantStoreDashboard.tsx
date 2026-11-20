@@ -6,11 +6,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MockLocale } from "@/mock/types";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { EGYPTIAN_GOVERNORATES } from "@/features/checkout/validation";
+import type { MemberRole } from "@/lib/auth";
 
 type StoreConfig = {
   store_name?: string;
   logo_url?: string | null;
   primary_color?: string;
+  meta_pixel_id?: string | null;
+  tiktok_pixel_id?: string | null;
   whatsapp?: string;
   plan?: string;
   hosting_mode?: "saas" | "client_hosting";
@@ -50,12 +53,35 @@ type Order = {
   shipping_requires_approval?: boolean;
   status: "new" | "processing" | "shipped" | "delivered" | "cancelled";
   items?: string | OrderItem[] | null;
+  shipment?: {
+    id: number;
+    provider: "bosta" | "oto" | "manual";
+    tracking_number: string | null;
+    status: string;
+    label_url: string | null;
+  } | null;
 };
 
 type OrderItem = { product_id: number; quantity: number; name_ar?: string; name_en?: string };
 type ShippingSettings = {
   requires_approval: boolean;
   rates: Array<{ governorate: string; fee: number }>;
+};
+type ShippingProvider = "bosta" | "oto" | "manual";
+type ShippingIntegration = {
+  provider: ShippingProvider;
+  enabled: boolean;
+  configured: boolean;
+  business_location_id: string | null;
+  package_type: string | null;
+  delivery_option_id: string | null;
+  pickup_location_code: string | null;
+  sender_name: string | null;
+  webhook_url: string;
+};
+type Shipment = NonNullable<Order["shipment"]> & {
+  label_data: string | null;
+  label_mime_type: string | null;
 };
 type ApiResponse<T> = { data: T };
 type Section = "analytics" | "branding" | "products" | "orders" | "shipping" | "domain";
@@ -102,6 +128,22 @@ type DashboardCopy = {
   preview: string;
   refresh: string;
   states: Record<Order["status"], string>;
+  metaPixelId: string;
+  tiktokPixelId: string;
+  shippingProvider: string;
+  apiKey: string;
+  businessLocationId: string;
+  packageType: string;
+  deliveryOptionId: string;
+  pickupLocationCode: string;
+  senderName: string;
+  enableProvider: string;
+  saveProvider: string;
+  createShipment: string;
+  openLabel: string;
+  trackingNumber: string;
+  webhookUrl: string;
+  configured: string;
 };
 
 const copy = {
@@ -147,6 +189,22 @@ const copy = {
     deliveredRefinement: "تم التأكيد والتسليم النهائي",
     preview: "معاينة متجري",
     refresh: "تحديث البيانات",
+    metaPixelId: "معرّف Meta Pixel",
+    tiktokPixelId: "معرّف TikTok Pixel",
+    shippingProvider: "شركة الشحن",
+    apiKey: "مفتاح API",
+    businessLocationId: "معرّف موقع Bosta",
+    packageType: "نوع الطرد",
+    deliveryOptionId: "معرّف خيار توصيل OTO",
+    pickupLocationCode: "رمز موقع الاستلام في OTO",
+    senderName: "اسم المرسل",
+    enableProvider: "تفعيل الربط",
+    saveProvider: "حفظ إعدادات شركة الشحن",
+    createShipment: "إنشاء بوليصة الشحن",
+    openLabel: "فتح البوليصة",
+    trackingNumber: "رقم التتبع",
+    webhookUrl: "رابط تحديثات التوصيل",
+    configured: "مُعد",
     states: { new: "جديد", processing: "قيد التجهيز", shipped: "تم الشحن", delivered: "تم التسليم", cancelled: "ملغي" },
   },
   en: {
@@ -191,6 +249,22 @@ const copy = {
     deliveredRefinement: "Final delivery confirmed",
     preview: "Preview my store",
     refresh: "Refresh data",
+    metaPixelId: "Meta Pixel ID",
+    tiktokPixelId: "TikTok Pixel ID",
+    shippingProvider: "Shipping provider",
+    apiKey: "API key",
+    businessLocationId: "Bosta business location ID",
+    packageType: "Package type",
+    deliveryOptionId: "OTO delivery option ID",
+    pickupLocationCode: "OTO pickup location code",
+    senderName: "Sender name",
+    enableProvider: "Enable integration",
+    saveProvider: "Save shipping integration",
+    createShipment: "Create shipping label",
+    openLabel: "Open label",
+    trackingNumber: "Tracking number",
+    webhookUrl: "Delivery update webhook URL",
+    configured: "Configured",
     states: { new: "New", processing: "Preparing", shipped: "Shipped", delivered: "Delivered", cancelled: "Cancelled" },
   },
 } satisfies Record<MockLocale, DashboardCopy>;
@@ -251,18 +325,40 @@ function whatsappUrl(phone: string): string {
   return `https://wa.me/${international}`;
 }
 
-export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale: MockLocale }) {
+export function MerchantStoreDashboard({
+  slug,
+  locale,
+  memberRole,
+}: {
+  slug: string;
+  locale: MockLocale;
+  memberRole: MemberRole | null;
+}) {
   const text = copy[locale];
-  const [section, setSection] = useState<Section>("branding");
+  const [section, setSection] = useState<Section>(
+    memberRole === "staff" || memberRole === "order_manager" ? "orders" : "branding",
+  );
   const [store, setStore] = useState<StoreMetadata>();
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings>();
+  const [shippingIntegrations, setShippingIntegrations] = useState<ShippingIntegration[]>([]);
+  const [shippingProvider, setShippingProvider] = useState<ShippingProvider>("manual");
+  const [shippingEnabled, setShippingEnabled] = useState(false);
+  const [shippingApiKey, setShippingApiKey] = useState("");
+  const [businessLocationId, setBusinessLocationId] = useState("");
+  const [packageType, setPackageType] = useState("SMALL");
+  const [deliveryOptionId, setDeliveryOptionId] = useState("");
+  const [pickupLocationCode, setPickupLocationCode] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [manualTrackingNumbers, setManualTrackingNumbers] = useState<Record<number, string>>({});
   const [shippingApproval, setShippingApproval] = useState(false);
   const [shippingRates, setShippingRates] = useState<Record<string, string>>({});
   const [storeName, setStoreName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#D9541E");
+  const [metaPixelId, setMetaPixelId] = useState("");
+  const [tiktokPixelId, setTiktokPixelId] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [productNameAr, setProductNameAr] = useState("");
   const [productNameEn, setProductNameEn] = useState("");
@@ -275,21 +371,31 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
   const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
     try {
       const base = apiBase(slug);
-      const [storeResult, productsResult, ordersResult, shippingResult] = await Promise.all([
+      const [storeResult, productsResult, ordersResult, shippingResult, integrationsResult] = await Promise.all([
         requestJson<ApiResponse<StoreMetadata>>(`${base}/config`),
         requestJson<ApiResponse<Product[]>>(`${base}/products`),
         requestJson<ApiResponse<Order[]>>(`${base}/orders`),
         requestJson<ApiResponse<ShippingSettings>>(`${base}/shipping-rates`),
+        requestJson<ApiResponse<ShippingIntegration[]>>(`${base}/shipping/integrations`),
       ]);
+      setError("");
       setStore(storeResult.data);
       setProducts(productsResult.data);
       setOrders(ordersResult.data);
       setShippingSettings(shippingResult.data);
+      setShippingIntegrations(integrationsResult.data);
+      const activeIntegration = integrationsResult.data.find(
+        (integration) => integration.provider !== "manual" && integration.enabled,
+      );
+      setShippingProvider(activeIntegration?.provider ?? "manual");
+      setShippingEnabled(activeIntegration?.enabled ?? true);
+      setBusinessLocationId(activeIntegration?.business_location_id ?? "");
+      setPackageType(activeIntegration?.package_type ?? "SMALL");
+      setDeliveryOptionId(activeIntegration?.delivery_option_id ?? "");
+      setPickupLocationCode(activeIntegration?.pickup_location_code ?? "");
+      setSenderName(activeIntegration?.sender_name ?? "");
       setShippingApproval(shippingResult.data.requires_approval);
       setShippingRates(Object.fromEntries(
         shippingResult.data.rates.map((rate) => [rate.governorate, String(rate.fee)]),
@@ -297,6 +403,8 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
       setStoreName(storeResult.data.config.store_name ?? "");
       setLogoUrl(storeResult.data.config.logo_url ?? "");
       setPrimaryColor(storeResult.data.config.primary_color ?? "#D9541E");
+      setMetaPixelId(storeResult.data.config.meta_pixel_id ?? "");
+      setTiktokPixelId(storeResult.data.config.tiktok_pixel_id ?? "");
       setWhatsapp(storeResult.data.config.whatsapp ?? "");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : text.loadError);
@@ -306,6 +414,12 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
   }, [slug, text.loadError]);
 
   useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refreshData = useCallback(() => {
+    setLoading(true);
+    setError("");
     void load();
   }, [load]);
 
@@ -358,6 +472,8 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
           logo_url: logoUrl || null,
           primary_color: primaryColor,
           whatsapp,
+          meta_pixel_id: metaPixelId || null,
+          tiktok_pixel_id: tiktokPixelId || null,
         }),
       });
       setNotice(text.saved);
@@ -392,6 +508,85 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
       setNotice(text.saved);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : text.loadError);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function selectShippingProvider(provider: ShippingProvider) {
+    const integration = shippingIntegrations.find((item) => item.provider === provider);
+    setShippingProvider(provider);
+    setShippingEnabled(integration?.enabled ?? provider === "manual");
+    setBusinessLocationId(integration?.business_location_id ?? "");
+    setPackageType(integration?.package_type ?? "SMALL");
+    setDeliveryOptionId(integration?.delivery_option_id ?? "");
+    setPickupLocationCode(integration?.pickup_location_code ?? "");
+    setSenderName(integration?.sender_name ?? "");
+    setShippingApiKey("");
+  }
+
+  async function saveShippingIntegration(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const result = await requestJson<ApiResponse<ShippingIntegration[]>>(`${apiBase(slug)}/shipping/integrations`, {
+        method: "PUT",
+        body: JSON.stringify({
+          provider: shippingProvider,
+          enabled: shippingEnabled,
+          ...(shippingApiKey ? { api_key: shippingApiKey } : {}),
+          business_location_id: businessLocationId,
+          package_type: packageType,
+          delivery_option_id: deliveryOptionId,
+          pickup_location_code: pickupLocationCode,
+          sender_name: senderName,
+        }),
+      });
+      setShippingIntegrations(result.data);
+      setShippingApiKey("");
+      setNotice(text.saved);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : text.loadError);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function createShipment(order: Order) {
+    setPending(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const shipmentResult = await requestJson<ApiResponse<Shipment>>(
+        `${apiBase(slug)}/orders/${order.id}/shipments`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            provider: shippingProvider,
+            ...(shippingProvider === "manual" ? {
+              tracking_number: manualTrackingNumbers[order.id] ?? "",
+            } : {}),
+          }),
+        },
+      );
+      const shipment = shipmentResult.data;
+      if (shipment.label_data) {
+        const bytes = Uint8Array.from(atob(shipment.label_data), (character) => character.charCodeAt(0));
+        const objectUrl = URL.createObjectURL(new Blob([bytes], { type: shipment.label_mime_type ?? "application/pdf" }));
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = `${order.order_number.replace(/[^A-Za-z0-9_-]/g, "")}-shipping-label.pdf`;
+        link.click();
+        URL.revokeObjectURL(objectUrl);
+      }
+      setNotice(text.saved);
+      await load();
+    } catch (shipmentError) {
+      setError(shipmentError instanceof Error ? shipmentError.message : text.loadError);
     } finally {
       setPending(false);
     }
@@ -528,11 +723,17 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
   }
 
   const domainStatus = store?.config.custom_domain_status;
+  const effectiveRole = memberRole === "order_manager" ? "staff" : memberRole ?? "staff";
+  const sections: Section[] = effectiveRole === "staff"
+    ? ["orders"]
+    : effectiveRole === "manager"
+      ? ["analytics", "branding", "products", "orders", "shipping"]
+      : ["analytics", "branding", "products", "orders", "shipping", "domain"];
 
   return (
     <section className="merchant-workspace">
       <nav aria-label={locale === "ar" ? "إدارة المتجر" : "Store management"} className="merchant-tabs">
-        {(["analytics", "branding", "products", "orders", "domain"] as const).map((item) => (
+        {sections.map((item) => (
           <button
             aria-pressed={section === item}
             key={item}
@@ -555,7 +756,7 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
       <div className="merchant-panel">
         <div className="merchant-panel-heading">
           <h2>{text[section]}</h2>
-          <button className="text-button" disabled={loading || pending} onClick={() => void load()} type="button">
+          <button className="text-button" disabled={loading || pending} onClick={refreshData} type="button">
             {text.refresh}
           </button>
         </div>
@@ -620,6 +821,26 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
                 pattern="01[0125][0-9]{8}"
                 required
                 value={whatsapp}
+              />
+            </label>
+            <label>
+              {text.metaPixelId}
+              <input
+                autoComplete="off"
+                maxLength={64}
+                onChange={(event) => setMetaPixelId(event.target.value)}
+                pattern="[A-Za-z0-9_-]{1,64}"
+                value={metaPixelId}
+              />
+            </label>
+            <label>
+              {text.tiktokPixelId}
+              <input
+                autoComplete="off"
+                maxLength={64}
+                onChange={(event) => setTiktokPixelId(event.target.value)}
+                pattern="[A-Za-z0-9_-]{1,64}"
+                value={tiktokPixelId}
               />
             </label>
             <button className="button-link" disabled={pending} type="submit">{text.save}</button>
@@ -700,6 +921,9 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
                   <div>
                     <strong>{order.order_number}</strong>
                     <span>{order.customer_name} · {formattedOrderTotal.format(Number(order.total))}</span>
+                    {order.shipment?.tracking_number && (
+                      <span>{text.trackingNumber}: {order.shipment.tracking_number} · {order.shipment.status}</span>
+                    )}
                     {order.shipping_requires_approval && (
                       <span>{locale === "ar" ? "الشحن بانتظار الاتفاق والموافقة" : "Shipping awaits agreement and approval"}</span>
                     )}
@@ -719,6 +943,40 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
                   <a className="button-link secondary" href={whatsappUrl(order.phone)} rel="noreferrer" target="_blank">
                     {text.openWhatsApp}
                   </a>
+                  {order.shipment?.label_url && (
+                    <a className="button-link secondary" href={order.shipment.label_url} rel="noreferrer" target="_blank">
+                      {text.openLabel}
+                    </a>
+                  )}
+                  {!order.shipment && (
+                    <>
+                      {shippingProvider === "manual" && (
+                        <input
+                          aria-label={`${text.trackingNumber} ${order.order_number}`}
+                          onChange={(event) => setManualTrackingNumbers((previous) => ({
+                            ...previous,
+                            [order.id]: event.currentTarget.value,
+                          }))}
+                          placeholder={text.trackingNumber}
+                          value={manualTrackingNumbers[order.id] ?? ""}
+                        />
+                      )}
+                      <button
+                        className="button-link secondary"
+                        disabled={pending
+                          || (shippingProvider === "manual" && !manualTrackingNumbers[order.id]?.trim())
+                          || (
+                          shippingProvider !== "manual"
+                          && !shippingIntegrations.some((integration) =>
+                            integration.provider === shippingProvider && integration.enabled && integration.configured)
+                          )}
+                        onClick={() => void createShipment(order)}
+                        type="button"
+                      >
+                        {text.createShipment}
+                      </button>
+                    </>
+                  )}
                   <button className="button-link secondary" onClick={() => printWaybill(order)} type="button">
                     {text.printWaybill}
                   </button>
@@ -766,6 +1024,82 @@ export function MerchantStoreDashboard({ slug, locale }: { slug: string; locale:
             <button className="button-link" disabled={pending} type="submit">
               {locale === "ar" ? "حفظ إعدادات الشحن" : "Save shipping settings"}
             </button>
+          </form>
+        )}
+        {!loading && section === "shipping" && (
+          <form className="auth-form merchant-shipping-form" onSubmit={saveShippingIntegration}>
+            <label>
+              {text.shippingProvider}
+              <select onChange={(event) => selectShippingProvider(event.target.value as ShippingProvider)} value={shippingProvider}>
+                <option value="manual">{locale === "ar" ? "شحن يدوي" : "Manual shipping"}</option>
+                <option value="bosta">Bosta</option>
+                <option value="oto">OTO</option>
+              </select>
+            </label>
+            {shippingProvider !== "manual" ? (
+              <>
+                <label>
+                  {text.apiKey}
+                  <input
+                    autoComplete="new-password"
+                    onChange={(event) => setShippingApiKey(event.target.value)}
+                    placeholder={locale === "ar" ? "اتركه فارغاً للاحتفاظ بالمفتاح الحالي" : "Leave blank to keep the current key"}
+                    type="password"
+                    value={shippingApiKey}
+                  />
+                </label>
+                {shippingProvider === "bosta" ? (
+                  <>
+                    <label>
+                      {text.businessLocationId}
+                      <input onChange={(event) => setBusinessLocationId(event.target.value)} required value={businessLocationId} />
+                    </label>
+                    <label>
+                      {text.packageType}
+                      <select onChange={(event) => setPackageType(event.target.value)} value={packageType}>
+                        {["SMALL", "MEDIUM", "LARGE", "Light Bulky", "Heavy Bulky"].map((item) => (
+                          <option key={item} value={item}>{item}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      {text.deliveryOptionId}
+                      <input onChange={(event) => setDeliveryOptionId(event.target.value)} required value={deliveryOptionId} />
+                    </label>
+                    <label>
+                      {text.pickupLocationCode}
+                      <input onChange={(event) => setPickupLocationCode(event.target.value)} required value={pickupLocationCode} />
+                    </label>
+                    <label>
+                      {text.senderName}
+                      <input onChange={(event) => setSenderName(event.target.value)} required value={senderName} />
+                    </label>
+                  </>
+                )}
+                <label className="merchant-shipping-toggle">
+                  <input checked={shippingEnabled} onChange={(event) => setShippingEnabled(event.target.checked)} type="checkbox" />
+                  <span>{text.enableProvider}</span>
+                </label>
+                <p>{shippingIntegrations.some((integration) => integration.provider === shippingProvider && integration.configured)
+                  ? `${text.configured}: ${shippingProvider}`
+                  : locale === "ar" ? "أدخل بيانات الربط لتفعيل إنشاء البوالص وتحديثات التوصيل." : "Configure credentials to enable labels and delivery updates."}</p>
+                {shippingIntegrations.find((integration) => integration.provider === shippingProvider)?.webhook_url && (
+                  <label>
+                    {text.webhookUrl}
+                    <input
+                      readOnly
+                      value={shippingIntegrations.find((integration) => integration.provider === shippingProvider)?.webhook_url}
+                    />
+                  </label>
+                )}
+              </>
+            ) : (
+              <p>{locale === "ar" ? "أدخل رقم التتبع يدوياً عند إنشاء بوليصة الطلب." : "Enter a tracking number when creating a manual shipment."}</p>
+            )}
+            <button className="button-link" disabled={pending} type="submit">{text.saveProvider}</button>
           </form>
         )}
 

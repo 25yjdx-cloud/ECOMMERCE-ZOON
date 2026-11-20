@@ -3,12 +3,14 @@ import { cookies } from "next/headers";
 export const AUTH_COOKIE = "commerceforge_auth";
 
 export type AuthRole = "super_admin" | "merchant";
+export type MemberRole = "owner" | "manager" | "staff" | "order_manager";
 
 export type AuthUser = {
   id: number;
   name: string;
   email: string;
   role: AuthRole;
+  memberRole?: MemberRole | null;
   storeSlug: string | null;
   whatsappPhone?: string | null;
   market?: "EG" | "SA" | null;
@@ -24,6 +26,7 @@ export function isAuthUser(value: unknown): value is AuthUser {
     typeof user.name === "string" &&
     typeof user.email === "string" &&
     (user.role === "super_admin" || user.role === "merchant") &&
+    (user.memberRole === undefined || user.memberRole === null || user.memberRole === "owner" || user.memberRole === "manager" || user.memberRole === "staff" || user.memberRole === "order_manager") &&
     (user.storeSlug === null || typeof user.storeSlug === "string") &&
     (user.whatsappPhone === undefined || user.whatsappPhone === null || typeof user.whatsappPhone === "string") &&
     (user.market === undefined || user.market === null || user.market === "EG" || user.market === "SA") &&

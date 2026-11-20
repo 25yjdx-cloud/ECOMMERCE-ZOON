@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
@@ -10,6 +11,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const query = await searchParams;
   const locale = getLocale(query.lang);
   const user = await getAuthUser();
+  if (!user) redirect(`/login?lang=${locale}&redirect=%2Fnotifications`);
 
   return (
     <div lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>

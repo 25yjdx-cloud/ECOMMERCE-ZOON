@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCart } from "@/components/cart/CartProvider";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { formatEGP } from "@/i18n/format";
 import type { Preset } from "@/lib/presets";
 import type { MockLocale, MockProduct } from "@/mock/types";
 import { createLocaleHref } from "@/i18n/locale";
@@ -15,6 +14,8 @@ export function StoreProductCard({
   locale,
   dictionary,
   onAdded,
+  currency,
+  isLiveStore = false,
   storeSlug = product.storeSlug,
 }: {
   product: MockProduct;
@@ -22,15 +23,24 @@ export function StoreProductCard({
   locale: MockLocale;
   dictionary: Dictionary;
   onAdded: () => void;
+  currency: "EGP" | "SAR";
+  isLiveStore?: boolean;
   storeSlug?: string;
 }) {
   const { addItem } = useCart();
   const productHref = createLocaleHref(
-    `/preview/${preset.id}/product/${product.id}`,
+    isLiveStore && storeSlug
+      ? `/s/${encodeURIComponent(storeSlug)}/product/${encodeURIComponent(product.id)}`
+      : `/preview/${preset.id}/product/${product.id}`,
     { lang: locale, ...(storeSlug ? { store: storeSlug } : {}) },
     locale,
   );
   const cartProduct = storeSlug ? { ...product, storeSlug } : product;
+  const formattedPrice = new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  });
 
   return (
     <article className="product-card">
@@ -50,8 +60,8 @@ export function StoreProductCard({
         </h3>
         <p>{product.description[locale]}</p>
         <div className="product-price-row">
-          <strong>{formatEGP(product.price, locale)}</strong>
-          {product.compareAtPrice && <del>{formatEGP(product.compareAtPrice, locale)}</del>}
+          <strong>{formattedPrice.format(product.price)}</strong>
+          {product.compareAtPrice && <del>{formattedPrice.format(product.compareAtPrice)}</del>}
         </div>
         <button
           className="button-link"

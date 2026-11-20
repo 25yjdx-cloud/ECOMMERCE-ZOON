@@ -39,6 +39,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
         preset={preset}
         query={query}
         user={user}
+        allowDemoFallback
       />
     </>
   );

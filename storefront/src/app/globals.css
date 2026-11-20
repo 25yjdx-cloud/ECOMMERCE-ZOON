@@ -969,6 +969,18 @@ button {
   --store-accent: var(--brand);
   min-height: 100vh;
   background: var(--page);
+  animation: store-reveal 0.45s ease both;
+}
+
+@keyframes store-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .storefront[data-preset="fashion"] {
@@ -1011,6 +1023,18 @@ button {
   object-fit: cover;
 }
 
+.store-logo-fallback {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 0.45rem;
+  background: var(--store-accent);
+  color: var(--white);
+  font-weight: 900;
+}
+
 .store-topbar-actions {
   display: flex;
   align-items: center;
@@ -1032,8 +1056,10 @@ button {
   align-content: center;
   gap: 0.85rem;
   background: var(--store-accent);
+  background-image: linear-gradient(125deg, color-mix(in srgb, var(--store-accent), white 12%), var(--store-accent));
   padding: 3rem max(1rem, calc((100vw - 76rem) / 2));
   color: var(--white);
+  animation: store-reveal 0.55s ease both;
 }
 
 .store-hero h1 {
@@ -1856,6 +1882,98 @@ button {
   border: 2px solid var(--surface);
   border-radius: 50%;
   background: var(--brand);
+}
+
+.notification-count-badge {
+  position: absolute;
+  inset-block-start: -0.15rem;
+  inset-inline-end: -0.2rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface);
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--surface);
+  padding-inline: 0.18rem;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.notification-item-button {
+  width: 100%;
+  display: grid;
+  gap: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: start;
+  cursor: pointer;
+}
+
+.notification-item-button span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.world-quick-switcher {
+  position: relative;
+}
+
+.world-quick-switcher summary {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 0.4rem 0.75rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.world-quick-switcher summary::-webkit-details-marker {
+  display: none;
+}
+
+.world-quick-switcher nav {
+  position: absolute;
+  z-index: 90;
+  inset-block-start: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  width: max-content;
+  min-width: 13rem;
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  padding: 0.45rem;
+  box-shadow: var(--shadow-float);
+}
+
+.world-quick-switcher nav a {
+  border-radius: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  color: var(--text);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.world-quick-switcher nav a:hover,
+.world-quick-switcher nav a:focus-visible {
+  background: var(--surface-soft);
+  color: var(--brand);
+}
+
+.mobile-drawer-notification {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
 }
 
 .notification-popover {
@@ -3730,16 +3848,41 @@ html[data-theme="dark"] .manager-connection {
   padding-block: clamp(3rem, 9vh, 7rem);
 }
 
-.auth-intro h1 {
-  margin: 0.5rem 0;
-  font-size: clamp(2.5rem, 6vw, 4.3rem);
+.auth-intro {
+  border-radius: var(--radius-card);
+  background: linear-gradient(145deg, #171512, #30291f);
+  box-shadow: var(--shadow-soft);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.auth-intro .auth-brand-title {
+  margin: 0;
+  background: linear-gradient(110deg, #fff0b3 0%, #f5bf4f 48%, #d88a1c 100%);
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 900;
   letter-spacing: -0.045em;
-  line-height: 1.05;
+  line-height: 1.02;
+  -webkit-background-clip: text;
+}
+
+.auth-intro .auth-welcome-title {
+  margin: 0.75rem 0;
+  color: #fff;
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 .auth-intro p {
   max-width: 34rem;
   color: var(--text-secondary);
+}
+
+.auth-intro > p:not(.auth-brand-title) {
+  color: rgb(255 255 255 / 78%);
 }
 
 .auth-card {
@@ -3864,6 +4007,13 @@ html[data-theme="dark"] .manager-connection {
   margin: 1.25rem auto;
   border-radius: var(--radius-card);
   padding: 1rem;
+  animation: store-reveal 0.65s ease both;
+}
+
+.template-live-product {
+  margin: 0;
+  color: inherit;
+  font-weight: 800;
 }
 
 .template-details {

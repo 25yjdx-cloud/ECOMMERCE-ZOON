@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\CommerceForge\BuildStorePayloadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CommerceForge\AiAssistRequest;
 use App\Http\Requests\CommerceForge\CategoryRequest;
@@ -17,6 +18,7 @@ use App\Http\Requests\CommerceForge\UpdateShippingRatesRequest;
 use App\Http\Requests\CommerceForge\UpdateStoreConfigRequest;
 use App\Models\User;
 use App\Repositories\CommerceForgeStoreRepository;
+use App\Services\CommerceForgeNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +26,10 @@ use Illuminate\Support\Str;
 
 class CommerceForgeController extends Controller
 {
-    public function __construct(private readonly CommerceForgeStoreRepository $storeRepository) {}
+    public function __construct(
+        private readonly CommerceForgeStoreRepository $storeRepository,
+        private readonly CommerceForgeNotificationService $notifications,
+    ) {}
 
     public function refinementQueue(): JsonResponse
     {
@@ -88,6 +93,11 @@ class CommerceForgeController extends Controller
                 'trial_ends_at' => $store->trial_ends_at,
             ],
         ]);
+    }
+
+    public function buildPayload(string $slug, BuildStorePayloadAction $buildStorePayload): JsonResponse
+    {
+        return response()->json(['data' => $buildStorePayload->execute($slug)]);
     }
 
     public function shippingRates(string $slug): JsonResponse
@@ -196,12 +206,15 @@ class CommerceForgeController extends Controller
             $this->storeRepository->createInitialProducts($data['store_slug'], $data['initial_products'] ?? []);
             $user->forceFill([
                 'store_slug' => $data['store_slug'],
+                'member_role' => 'owner',
                 'market' => $data['market'],
                 'whatsapp_phone' => $data['whatsapp'],
             ])->save();
 
             return $id;
         });
+
+        $this->notifications->storeCreated($storeId, $data['store_slug'], $user->id, trim($data['store_name']));
 
         return response()->json([
             'data' => [
@@ -359,7 +372,30 @@ class CommerceForgeController extends Controller
     {
         abort_unless(DB::table('cf_stores')->where('slug', $slug)->exists(), 404);
 
-        return response()->json(['data' => DB::table('cf_orders')->where('store_slug', $slug)->orderByDesc('id')->get()]);
+        $orders = DB::table('cf_orders')->where('store_slug', $slug)->orderByDesc('id')->get();
+        $shipments = DB::table('cf_shipments')
+            ->where('store_slug', $slug)
+            ->whereIn('order_id', $orders->pluck('id'))
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('order_id');
+
+        return response()->json([
+            'data' => $orders->map(function (object $order) use ($shipments) {
+                $shipment = $shipments[$order->id]->first() ?? null;
+
+                return [
+                    ...(array) $order,
+                    'shipment' => $shipment ? [
+                        'id' => $shipment->id,
+                        'provider' => $shipment->provider,
+                        'tracking_number' => $shipment->tracking_number,
+                        'status' => $shipment->status,
+                        'label_url' => $shipment->label_url,
+                    ] : null,
+                ];
+            }),
+        ]);
     }
 
     public function updateOrderStatus(UpdateOrderStatusRequest $request, string $slug, int $order): JsonResponse
@@ -447,10 +483,18 @@ class CommerceForgeController extends Controller
             return [
                 'id' => $id,
                 'orderNumber' => $orderNumber,
+                'total' => number_format($totalCents / 100, 2, '.', ''),
                 'shippingRequiresApproval' => $shippingRequiresApproval,
                 'shippingFee' => number_format($shippingCents / 100, 2, '.', ''),
             ];
         });
+
+        $this->notifications->orderCreated(
+            $data['storeSlug'],
+            $result['id'],
+            $result['orderNumber'],
+            $result['total'],
+        );
 
         return response()->json($result, 201);
     }

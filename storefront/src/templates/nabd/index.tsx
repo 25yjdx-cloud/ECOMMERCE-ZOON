@@ -7,8 +7,10 @@ export const nabdTemplate = {
   id: "nabd",
   accent: "#B8F226",
   surface: "#0D0D0D",
-  Details({ locale }: TemplateModuleProps) {
-    const goals = locale === "ar" ? ["قوة", "جري", "لياقة"] : ["Strength", "Running", "Fitness"];
+  Details({ locale, store }: TemplateModuleProps) {
+    const goals = store.categories.length
+      ? store.categories.map((category) => category[locale])
+      : locale === "ar" ? ["قوة", "جري", "لياقة"] : ["Strength", "Running", "Fitness"];
     const [goalIndex, setGoalIndex] = useState(0);
 
     return (
@@ -20,7 +22,17 @@ export const nabdTemplate = {
           ))}
         </div>
         <div className="template-ranking" aria-label={locale === "ar" ? "الأكثر طلباً" : "Top picks"}>
-          {[1, 2, 3].map((number) => <span key={number}><b>{number}</b>{locale === "ar" ? "اختيار رياضي" : "Training pick"}</span>)}
+          {store.products.slice(0, 3).map((product, index) => (
+            <span key={product.id}>
+              <b>{index + 1}</b>
+              {product.name[locale]} · {new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
+                style: "currency",
+                currency: store.currency,
+                maximumFractionDigits: 0,
+              }).format(product.price)}
+            </span>
+          ))}
+          {store.products.length === 0 && <span>{locale === "ar" ? "أضف المنتجات لعرضها هنا." : "Add products to feature them here."}</span>}
         </div>
         <details className="template-size-guide">
           <summary>{locale === "ar" ? "اعرف مقاسك" : "Find your size"}</summary>

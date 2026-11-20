@@ -95,5 +95,14 @@ return [
     ],
     'commerceforge' => [
         'payment_webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
+        'storefront_url' => env('STOREFRONT_URL', env('APP_URL')),
+    ],
+    'whatsapp' => [
+        'token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'graph_version' => env('WHATSAPP_GRAPH_API_VERSION'),
+        'order_template' => env('WHATSAPP_ORDER_TEMPLATE'),
+        'store_template' => env('WHATSAPP_STORE_TEMPLATE'),
+        'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'ar'),
     ],
 ];

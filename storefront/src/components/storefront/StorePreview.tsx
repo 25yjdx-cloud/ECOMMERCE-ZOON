@@ -17,42 +17,14 @@ import { PreviewTopbar } from "./PreviewTopbar";
 import { StoreProductCard } from "./StoreProductCard";
 import { templateModules } from "@/templates";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-
-type StoreConfigResponse = {
-  data: {
-    paused: boolean;
-    trial_ends_at: string | null;
-    shipping?: {
-      requires_approval: boolean;
-      rates: Array<{ governorate: string; fee: number }>;
-    };
-    config: {
-      store_name?: string;
-      logo_url?: string | null;
-      primary_color?: string;
-      background_color?: string;
-      mode?: "light" | "dark";
-      hero_title?: string;
-      hero_subtitle?: string;
-      hero_cta?: string;
-    };
-  };
-};
-type StoreProductsResponse = {
-  data: Array<{
-    id: number;
-    external_id: string | null;
-    name_ar: string;
-    name_en: string;
-    description_ar: string | null;
-    description_en: string | null;
-    category_ar: string | null;
-    category_en: string | null;
-    price: number;
-    old_price: number | null;
-    stock_qty: number;
-  }>;
-};
+import {
+  isStoreBuildPayloadResponse,
+  toStorePayloadProduct,
+  type StoreBuildPayload,
+  type StorePayload,
+} from "@/lib/store-payload";
+import { StorePixelTracking } from "./StorePixelTracking";
+import type { CSSProperties } from "react";
 
 export function StorePreview({
   locale,
@@ -60,20 +32,26 @@ export function StorePreview({
   dictionary,
   query,
   user,
+  allowDemoFallback,
+  isLiveStore = false,
+  initialPayload,
 }: {
   locale: MockLocale;
   preset: Preset;
   dictionary: Dictionary;
   query: QueryValues;
   user: AuthUser | null;
+  allowDemoFallback: boolean;
+  isLiveStore?: boolean;
+  initialPayload?: StoreBuildPayload;
 }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>();
   const [cartOpen, setCartOpen] = useState(false);
-  const [remoteConfig, setRemoteConfig] = useState<StoreConfigResponse["data"]["config"]>();
-  const [remoteShipping, setRemoteShipping] = useState<StoreConfigResponse["data"]["shipping"]>();
-  const [remoteProducts, setRemoteProducts] = useState<StoreProductsResponse["data"]>();
-  const [storePaused, setStorePaused] = useState(false);
+  const [remotePayload, setRemotePayload] = useState(initialPayload);
+  const [payloadState, setPayloadState] = useState<"loading" | "ready" | "error">(
+    initialPayload ? "ready" : "loading",
+  );
   const { itemCount } = useCart();
   const data = mockData[preset.id];
   const template = templateModules[preset.id];
@@ -82,49 +60,65 @@ export function StorePreview({
   const requestedStore = Array.isArray(query.store) ? query.store[0] : query.store;
   const storeSlug = requestedStore || preset.id;
   useEffect(() => {
+    if (initialPayload?.slug === storeSlug) return;
+
     let active = true;
-    setRemoteShipping(undefined);
-    void Promise.all([
-      fetch(`/api/stores/${encodeURIComponent(storeSlug)}/config`, { cache: "no-store" }),
-      fetch(`/api/stores/${encodeURIComponent(storeSlug)}/products`, { cache: "no-store" }),
-    ]).then(async ([configResponse, productsResponse]) => {
-      if (!configResponse.ok) return;
-      const configResult = await configResponse.json() as StoreConfigResponse;
-      const productsResult = productsResponse.ok
-        ? await productsResponse.json() as StoreProductsResponse
-        : undefined;
-      if (active) {
-        setRemoteConfig(configResult.data.config);
-        setRemoteShipping(configResult.data.shipping);
-        setStorePaused(configResult.data.paused);
-        if (productsResult) setRemoteProducts(productsResult.data);
-      }
-    }).catch(() => {
-      if (active) {
-        setRemoteConfig(undefined);
-        setRemoteProducts(undefined);
-        setRemoteShipping(undefined);
-      }
-    });
+    void fetch(`/api/stores/${encodeURIComponent(storeSlug)}/build-payload`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Store payload request failed (${response.status}).`);
+
+        const result: unknown = await response.json();
+        if (!isStoreBuildPayloadResponse(result)) {
+          throw new Error("Store payload returned an invalid format.");
+        }
+
+        return result.data;
+      }).then((payload) => {
+        if (active) {
+          setRemotePayload(payload);
+          setPayloadState("ready");
+        }
+      }).catch(() => {
+        if (active) {
+          setRemotePayload(undefined);
+          setPayloadState("error");
+        }
+      });
 
     return () => { active = false; };
-  }, [preset.id, storeSlug]);
+  }, [initialPayload, preset.id, storeSlug]);
 
-  const productsData = remoteProducts
-    ? remoteProducts.map((product) => ({
-        id: product.external_id ?? String(product.id),
-        name: { ar: product.name_ar, en: product.name_en },
-        category: {
-          ar: product.category_ar ?? store.products,
-          en: product.category_en ?? store.products,
-        },
-        description: { ar: product.description_ar ?? "", en: product.description_en ?? "" },
-        price: Number(product.price),
-        ...(product.old_price ? { compareAtPrice: Number(product.old_price) } : {}),
-        preset: preset.id,
-        storeSlug,
-      }))
-    : data.products.map((product) => ({ ...product, storeSlug }));
+  const remoteConfig = remotePayload?.config;
+  const remoteShipping = remotePayload?.shipping;
+  const storePaused = remotePayload?.paused ?? false;
+
+  const productsData = useMemo<StorePayload["products"]>(
+    () => remotePayload
+      ? remotePayload.products.map((product) =>
+          toStorePayloadProduct(product, preset.id, storeSlug, { ar: store.products, en: store.products }),
+        )
+      : data.products.map((product) => ({ ...product, storeSlug, stockQty: 0 })),
+    [data.products, preset.id, remotePayload, store.products, storeSlug],
+  );
+  const storePayload: StorePayload = {
+    slug: storeSlug,
+    template: preset.id,
+    storeName: remoteConfig?.store_name ?? storeName,
+    logoUrl: remoteConfig?.logo_url ?? null,
+    primaryColor: remoteConfig?.primary_color ?? template.accent,
+    backgroundColor: remoteConfig?.background_color ?? null,
+    currency: remoteConfig?.market === "SA" ? "SAR" : "EGP",
+    metaPixelId: remoteConfig?.meta_pixel_id ?? null,
+    tiktokPixelId: remoteConfig?.tiktok_pixel_id ?? null,
+    categories: remotePayload
+      ? [...new Map(productsData.map((product) => [product.category.en, product.category])).values()]
+      : data.categories,
+    products: productsData,
+    shipping: remoteShipping ?? {
+      requires_approval: preset.id === "furniture",
+      rates: [],
+    },
+  };
   const products = useMemo(() => {
     const term = search.trim().toLocaleLowerCase(locale === "ar" ? "ar-EG" : "en-US");
     return productsData.filter((product) => {
@@ -136,6 +130,24 @@ export function StorePreview({
       return matchesCategory && matchesSearch;
     });
   }, [category, locale, productsData, search]);
+
+  if (!allowDemoFallback && payloadState === "loading") {
+    return (
+      <main className="store-paused-screen" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
+        <p role="status">{locale === "ar" ? "جارٍ تحميل المتجر..." : "Loading store..."}</p>
+      </main>
+    );
+  }
+
+  if (!allowDemoFallback && payloadState === "error") {
+    return (
+      <main className="store-paused-screen" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
+        <p role="alert">
+          {locale === "ar" ? "تعذر تحميل بيانات المتجر حالياً." : "Store data is currently unavailable."}
+        </p>
+      </main>
+    );
+  }
 
   if (storePaused) {
     return (
@@ -158,21 +170,26 @@ export function StorePreview({
       lang={locale}
       dir={locale === "ar" ? "rtl" : "ltr"}
       style={{
-        accentColor: remoteConfig?.primary_color ?? template.accent,
-        backgroundColor: remoteConfig?.background_color,
-      }}
+        "--store-accent": storePayload.primaryColor,
+        accentColor: storePayload.primaryColor,
+        backgroundColor: storePayload.backgroundColor ?? undefined,
+      } as CSSProperties}
     >
       <LocaleDocumentAttributes locale={locale} />
-      <PreviewTopbar dictionary={dictionary} locale={locale} preset={preset} query={query} user={user} />
+      <StorePixelTracking metaPixelId={storePayload.metaPixelId} tiktokPixelId={storePayload.tiktokPixelId} />
+      {!isLiveStore && <PreviewTopbar dictionary={dictionary} locale={locale} preset={preset} query={query} user={user} />}
       {preset.id === "nabd" && <div className="store-announcement">{store.nabdAnnouncement}</div>}
       <header className="store-topbar">
         <Link
           className="brand-mark"
-          href={`/preview/${preset.id}?${new URLSearchParams({ lang: locale, ...(requestedStore ? { store: requestedStore } : {}) }).toString()}`}
+          href={isLiveStore
+            ? `/s/${encodeURIComponent(storeSlug)}?lang=${locale}`
+            : `/preview/${preset.id}?${new URLSearchParams({ lang: locale, ...(requestedStore ? { store: requestedStore } : {}) }).toString()}`}
         >
-          {remoteConfig?.logo_url && <img alt="" className="store-logo" src={remoteConfig.logo_url} />}
-          <span aria-hidden="true" className="brand-symbol">C</span>
-          <span>{remoteConfig?.store_name ?? storeName}</span>
+          {storePayload.logoUrl
+            ? <img alt="" className="store-logo" src={storePayload.logoUrl} />
+            : <span aria-hidden="true" className="store-logo-fallback">{storePayload.storeName.trim().charAt(0) || "S"}</span>}
+          <span>{storePayload.storeName}</span>
         </Link>
         <div className="store-topbar-actions">
           <label className="visually-hidden" htmlFor="store-search">{store.search}</label>
@@ -195,8 +212,11 @@ export function StorePreview({
           <p>{remoteConfig?.hero_subtitle || store.heroTexts[preset.id]}</p>
           <a className="button-link" href="#products">{remoteConfig?.hero_cta ?? store.shopNow}</a>
         </section>
-        <div className="template-module-wrap" style={{ backgroundColor: template.surface }}>
-          <template.Details locale={locale} />
+        <div
+          className="template-module-wrap"
+          style={{ backgroundColor: storePayload.backgroundColor ?? template.surface }}
+        >
+          <template.Details locale={locale} store={storePayload} />
         </div>
         <section className="page-shell store-section" aria-labelledby="products-heading">
           <div className="section-heading">
@@ -214,7 +234,7 @@ export function StorePreview({
             >
               {store.allCategories}
             </button>
-            {data.categories.map((item) => (
+            {storePayload.categories.map((item) => (
               <button
                 aria-pressed={category === item[locale]}
                 className="category-chip"
@@ -235,33 +255,37 @@ export function StorePreview({
                 onAdded={() => setCartOpen(true)}
                 preset={preset}
                 product={product}
+                currency={storePayload.currency}
+                isLiveStore={isLiveStore}
               />
             )) : <p>{store.noResults}</p>}
           </div>
         </section>
       </main>
       <footer className="page-shell site-footer">
-        <span>CommerceForge</span>
+        <span>{storePayload.storeName}</span>
       </footer>
       <CartDrawer
         dictionary={dictionary}
         locale={locale}
         onClose={() => setCartOpen(false)}
         open={cartOpen}
-        previewMode
+        previewMode={!isLiveStore}
         shippingRates={remoteShipping
-          ? Object.fromEntries(remoteShipping.rates.map((rate) => [rate.governorate, rate.fee]))
+          ? Object.fromEntries(storePayload.shipping.rates.map((rate) => [rate.governorate, rate.fee]))
           : undefined}
-        shippingRequiresApproval={remoteShipping?.requires_approval ?? preset.id === "furniture"}
+        shippingRequiresApproval={storePayload.shipping.requires_approval}
       />
-      <PreviewSwitcher
-        activePreset={preset}
-        dictionary={dictionary}
-        locale={locale}
-        pathname={`/preview/${preset.id}`}
-        presets={presets}
-        query={query}
-      />
+      {!isLiveStore && (
+        <PreviewSwitcher
+          activePreset={preset}
+          dictionary={dictionary}
+          locale={locale}
+          pathname={`/preview/${preset.id}`}
+          presets={presets}
+          query={query}
+        />
+      )}
     </div>
   );
 }

@@ -4,8 +4,10 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AiAssistantController;
 use App\Http\Controllers\Api\V1\CommerceForgeController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ShippingController;
 use App\Http\Middleware\EnsurePlatformOwner;
 use App\Http\Middleware\EnsureOwnsStore;
+use App\Http\Middleware\EnsureStoreManager;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
@@ -13,12 +15,19 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     Route::get('/templates/{slug}', [CommerceForgeController::class, 'template']);
     Route::get('/stores/{slug}/config', [CommerceForgeController::class, 'storeConfig']);
     Route::get('/stores/{slug}/products', [CommerceForgeController::class, 'products']);
+    Route::get('/stores/{slug}/build-payload', [CommerceForgeController::class, 'buildPayload']);
     Route::post('/orders', [CommerceForgeController::class, 'createOrder'])->middleware('throttle:10,1');
     Route::post('/orders/track', [CommerceForgeController::class, 'trackOrder'])->middleware('throttle:5,1');
     Route::post('/quote-requests', [CommerceForgeController::class, 'createQuote'])->middleware('throttle:5,1');
     Route::post('/leads', [CommerceForgeController::class, 'createQuote'])->middleware('throttle:5,1');
-    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/webhooks/shipping/{provider}', [ShippingController::class, 'webhook'])
+        ->whereIn('provider', ['bosta', 'oto']);
     Route::post('/ai/assist', [AiAssistantController::class, 'assist'])->middleware('throttle:10,1');
+    Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    });
     Route::middleware('auth:sanctum')
         ->post('/merchant/stores', [CommerceForgeController::class, 'createMerchantStore']);
 
@@ -30,18 +39,23 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', EnsureOwnsStore::class])->group(function () {
-        Route::put('/stores/{slug}/config', [CommerceForgeController::class, 'updateStoreConfig']);
         Route::get('/stores/{slug}/shipping-rates', [CommerceForgeController::class, 'shippingRates']);
-        Route::put('/stores/{slug}/shipping-rates', [CommerceForgeController::class, 'updateShippingRates']);
-        Route::post('/stores/{slug}/products', [CommerceForgeController::class, 'createProduct']);
-        Route::put('/stores/{slug}/products/{product}', [CommerceForgeController::class, 'updateProduct']);
-        Route::delete('/stores/{slug}/products/{product}', [CommerceForgeController::class, 'deleteProduct']);
         Route::get('/stores/{slug}/categories', [CommerceForgeController::class, 'categories']);
-        Route::post('/stores/{slug}/categories', [CommerceForgeController::class, 'createCategory']);
-        Route::put('/stores/{slug}/categories/{category}', [CommerceForgeController::class, 'updateCategory']);
-        Route::delete('/stores/{slug}/categories/{category}', [CommerceForgeController::class, 'deleteCategory']);
         Route::get('/stores/{slug}/orders', [CommerceForgeController::class, 'orders']);
         Route::patch('/stores/{slug}/orders/{order}', [CommerceForgeController::class, 'updateOrderStatus']);
+        Route::get('/stores/{slug}/shipping/integrations', [ShippingController::class, 'integrations']);
+        Route::post('/stores/{slug}/orders/{order}/shipments', [ShippingController::class, 'createShipment']);
+        Route::middleware(EnsureStoreManager::class)->group(function () {
+            Route::put('/stores/{slug}/config', [CommerceForgeController::class, 'updateStoreConfig']);
+            Route::put('/stores/{slug}/shipping-rates', [CommerceForgeController::class, 'updateShippingRates']);
+            Route::put('/stores/{slug}/shipping/integrations', [ShippingController::class, 'updateIntegration']);
+            Route::post('/stores/{slug}/products', [CommerceForgeController::class, 'createProduct']);
+            Route::put('/stores/{slug}/products/{product}', [CommerceForgeController::class, 'updateProduct']);
+            Route::delete('/stores/{slug}/products/{product}', [CommerceForgeController::class, 'deleteProduct']);
+            Route::post('/stores/{slug}/categories', [CommerceForgeController::class, 'createCategory']);
+            Route::put('/stores/{slug}/categories/{category}', [CommerceForgeController::class, 'updateCategory']);
+            Route::delete('/stores/{slug}/categories/{category}', [CommerceForgeController::class, 'deleteCategory']);
+        });
     });
 
     Route::prefix('auth')->group(function () {

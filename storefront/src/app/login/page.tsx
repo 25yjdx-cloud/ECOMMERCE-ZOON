@@ -50,11 +50,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <LandingHeader basePath="/login" dictionary={dictionary} locale={locale} query={query} user={user} />
       <section className="auth-content page-shell">
         <div className="auth-intro">
-          <span className="eyebrow">{isArabic ? "حساب CommerceForge" : "CommerceForge account"}</span>
-          <h1>{isArabic ? "أهلاً بك" : "Welcome back"}</h1>
+          <p className="auth-brand-title">{isArabic ? "حساب CommerceForge" : "CommerceForge Account"}</p>
+          <h1 className="auth-welcome-title">{isArabic ? "أهلاً بك" : "Welcome back"}</h1>
           <p>
             {isArabic
-              ? "سجّل دخولك أو أنشئ حسابك مجاناً وابدأ تجربتك لمدة 14 يوم"
+              ? "سجّل دخولك أو أنشئ حسابك مجاناً وابدأ تجربتك لمدة 14 يوم."
               : "Sign in or create your account for free and start your 14-day trial."}
           </p>
           {notice === "owner-only" && (

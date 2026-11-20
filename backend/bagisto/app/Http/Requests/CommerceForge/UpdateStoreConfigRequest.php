@@ -23,6 +23,8 @@ class UpdateStoreConfigRequest extends FormRequest
             'hero_title' => ['sometimes', 'required', 'string', 'max:180'],
             'hero_subtitle' => ['nullable', 'string', 'max:500'],
             'hero_cta' => ['sometimes', 'required', 'string', 'max:60'],
+            'meta_pixel_id' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Za-z0-9_-]{1,64}$/'],
+            'tiktok_pixel_id' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Za-z0-9_-]{1,64}$/'],
             'sections' => ['sometimes', 'required', 'array'],
             'sections.*' => ['boolean'],
         ];

@@ -8,6 +8,7 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { BackendConnectionStatus } from "./BackendConnectionStatus";
 import { PlatformUtilities } from "@/components/theme/PlatformUtilities";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 
 export function PreviewTopbar({
   dictionary,
@@ -43,8 +44,21 @@ export function PreviewTopbar({
         <BackendConnectionStatus dictionary={dictionary} />
       </div>
       <div className="preview-topbar-actions">
+        <Link href={createLocaleHref(
+          user?.role === "super_admin" ? "/manager" : user?.role === "merchant" ? "/dashboard/my-store" : "/",
+          query,
+          locale,
+        )}>
+          {locale === "ar" ? "رجوع للمنصة" : "Back to platform"}
+        </Link>
         {user?.role === "super_admin" ? (
           <>
+            <WorldQuickSwitcher
+              locale={locale}
+              preset={preset.id}
+              storeSlug={Array.isArray(query.store) ? query.store[0] : query.store}
+              user={user}
+            />
             <Link href={createLocaleHref(`/manager/${preset.id}`, query, locale)}>
               {dictionary.navigation.platformManager}
             </Link>

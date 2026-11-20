@@ -7,10 +7,12 @@ export const furnitureTemplate = {
   id: "furniture",
   accent: "#78350F",
   surface: "#FAF7F2",
-  Details({ locale }: TemplateModuleProps) {
-    const rooms = locale === "ar"
-      ? ["غرف معيشة", "غرف نوم", "مكاتب", "إضاءة"]
-      : ["Living rooms", "Bedrooms", "Offices", "Lighting"];
+  Details({ locale, store }: TemplateModuleProps) {
+    const rooms = store.categories.length
+      ? store.categories.map((category) => category[locale])
+      : locale === "ar"
+        ? ["غرف معيشة", "غرف نوم", "مكاتب", "إضاءة"]
+        : ["Living rooms", "Bedrooms", "Offices", "Lighting"];
     const [room, setRoom] = useState(rooms[0]);
 
     return (
@@ -21,9 +23,11 @@ export const furnitureTemplate = {
           ))}
         </div>
         <div className="template-furniture-spec">
-          <strong>{locale === "ar" ? "الأبعاد" : "Dimensions"}</strong>
-          <span>220×90×85 {locale === "ar" ? "سم" : "cm"}</span>
-          <span>{locale === "ar" ? "خشب زان · كتان بيج" : "Beech wood · beige linen"}</span>
+          <strong>{locale === "ar" ? "الشحن إلى المحافظات" : "Governorate delivery"}</strong>
+          <span>{store.shipping.rates.length} {locale === "ar" ? "منطقة شحن مضبوطة" : "shipping areas configured"}</span>
+          <span>{store.shipping.requires_approval
+            ? locale === "ar" ? "تأكيد تكلفة الشحن مطلوب قبل إتمام الطلب." : "Shipping cost confirmation is required before checkout."
+            : locale === "ar" ? "رسوم الشحن تُحسب حسب المحافظة." : "Shipping fees are calculated by governorate."}</span>
         </div>
       </section>
     );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Bell, CreditCard, House, Menu, MessageCircle, Moon, Store, Sun, UserRound, X } from "lucide-react";
+import { ArrowUpRight, CreditCard, House, Menu, MessageCircle, Moon, Store, Sun, UserRound, X } from "lucide-react";
 import type { Dictionary } from "@/i18n/dictionaries";
 import { createLocaleHref, type QueryValues } from "@/i18n/locale";
 import type { MockLocale } from "@/mock/types";
@@ -11,6 +11,8 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { MarketSwitcher } from "./MarketSwitcher";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 
 type LandingHeaderProps = {
   locale: MockLocale;
@@ -89,14 +91,8 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
         >
           {locale === "ar" ? "EN" : "عربي"}
         </Link>
-        <Link
-          aria-label={notificationsLabel}
-          className="navbar-icon-button navbar-notifications"
-          href={withLocale("/notifications")}
-        >
-          <Bell aria-hidden="true" size={18} />
-          <span aria-label="3" className="navbar-unread-count">3</span>
-        </Link>
+        {user && <NotificationBell buttonClassName="navbar-icon-button navbar-notifications" locale={locale} />}
+        <WorldQuickSwitcher locale={locale} storeSlug={user?.storeSlug ?? undefined} user={user} />
         <Link className="navbar-account-pill" href={user ? accountHref : withLocale("/login")}>
           <UserRound aria-hidden="true" size={16} />
           {user ? locale === "ar" ? "حسابي" : "My account" : nav.login}
@@ -141,11 +137,12 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
               <span>{accountLabel}<small>{locale === "ar" ? "الحساب والربط بجوجل" : "Account and Google connection"}</small></span>
               <ArrowUpRight aria-hidden="true" size={16} />
             </Link>
-            <Link href={withLocale("/notifications")} onClick={() => setMenuOpen(false)}>
-              <Bell aria-hidden="true" size={19} />
-              <span>{notificationsLabel}<small>{locale === "ar" ? "تحديثات المتجر والقوالب" : "Store and template updates"}</small></span>
-              <span className="mobile-drawer-count">3</span>
-            </Link>
+            {user && (
+              <div className="mobile-drawer-notification">
+                <NotificationBell buttonClassName="navbar-icon-button" locale={locale} />
+                <span>{notificationsLabel}</span>
+              </div>
+            )}
           </div>
           <nav aria-label={menuLabel} className="mobile-drawer-links">
             <Link href={homeHref} onClick={() => setMenuOpen(false)}><House aria-hidden="true" size={19} />{locale === "ar" ? "الرئيسية" : "Home"}</Link>
