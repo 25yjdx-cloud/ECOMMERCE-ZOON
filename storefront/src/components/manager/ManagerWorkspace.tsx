@@ -36,7 +36,7 @@ type Order = {
   total: string;
   status: string;
 };
-type Quote = { id: number; name: string; phone: string; email: string; package_id: string | null; message: string | null };
+type Quote = { id: number; name: string; phone: string; email: string; package_id: string | null; message: string | null; market?: "EG" | "SA" };
 type Tab = "design" | "catalog" | "orders" | "quotes" | "export";
 
 const emptyConfig: StoreConfig = {
@@ -356,10 +356,10 @@ export function ManagerWorkspace({
         <div className="manager-record-list">
           {quotes.map((quote) => (
             <article className="manager-record" key={quote.id}>
-              <strong>{quote.name} · {quote.package_id ?? "—"}</strong>
+              <strong>{quote.name} · {quote.package_id ?? "—"} · {quote.market === "SA" ? "🇸🇦" : "🇪🇬"}</strong>
               <span>{quote.email} · {quote.phone}</span>
               {quote.message && <p>{quote.message}</p>}
-              <a className="button-link secondary" href={`https://wa.me/20${quote.phone.replace(/^0/, "")}`} rel="noreferrer" target="_blank">{isArabic ? "رد عبر واتساب" : "Reply on WhatsApp"}</a>
+              <a className="button-link secondary" href={`https://wa.me/${quote.phone.replace(/\D/g, "")}`} rel="noreferrer" target="_blank">{isArabic ? "رد عبر واتساب" : "Reply on WhatsApp"}</a>
             </article>
           ))}
           {quotes.length === 0 && <p>{isArabic ? "لا توجد طلبات عروض أسعار حتى الآن." : "No quote requests yet."}</p>}

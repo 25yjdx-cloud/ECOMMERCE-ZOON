@@ -9,6 +9,8 @@ import type { MockLocale } from "@/mock/types";
 import type { AuthUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { MarketSwitcher } from "./MarketSwitcher";
 
 type LandingHeaderProps = {
   locale: MockLocale;
@@ -57,24 +59,19 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
 
   return (
     <>
-    <header className="site-header landing-nav">
+    <header className="site-header landing-nav sticky top-0 z-50 w-full transition-all duration-300 backdrop-blur-md border-b">
       <div className="navbar-inner">
       <Link className="brand-mark" href={homeHref} aria-label="CommerceForge">
-        <span aria-hidden="true" className="brand-symbol">
-          <svg fill="none" viewBox="0 0 32 32">
-            <path d="M5 26V15.5C5 9.7 9.7 5 15.5 5h1C22.3 5 27 9.7 27 15.5V26" stroke="currentColor" strokeLinecap="round" strokeWidth="2.5" />
-            <path d="M10 26V16a6 6 0 0 1 12 0v10M15 26V16a1 1 0 0 1 2 0v10" stroke="currentColor" strokeLinecap="round" strokeWidth="2.5" />
-          </svg>
-        </span>
-        <span>CommerceForge</span>
+        <BrandLogo size={42} showArabicSubtitle={false} variant="horizontal" />
       </Link>
       <nav aria-label={menuLabel} className="navbar-center-links">
-        <Link href={homeHref}>{locale === "ar" ? "الرئيسية" : "Home"}</Link>
-        <Link href={templatesHref}>{nav.presets}</Link>
-        <Link href={pricingHref}>{nav.pricing}</Link>
-        <Link href={contactHref}>{nav.contact}</Link>
+        <Link className="navbar-home-link" href={homeHref}>{locale === "ar" ? "الرئيسية" : "Home"}</Link>
+        <Link className="navbar-templates-link" href={templatesHref}>{locale === "ar" ? "القوالب" : "Templates"}</Link>
+        <Link className="navbar-pricing-link" href={pricingHref}>{nav.pricing}</Link>
+        <Link className="navbar-contact-link" href={contactHref}>{nav.contact}</Link>
       </nav>
       <div className="navbar-controls">
+        <MarketSwitcher locale={locale} />
         <button
           aria-label={theme === "dark"
             ? locale === "ar" ? "تفعيل الوضع الفاتح" : "Switch to light mode"
@@ -131,9 +128,8 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
           role="dialog"
         >
           <header className="mobile-drawer-header">
-            <Link className="brand-mark" href={homeHref} onClick={() => setMenuOpen(false)}>
-              <span aria-hidden="true" className="brand-symbol">C</span>
-              <span>CommerceForge</span>
+            <Link className="mobile-drawer-brand" href={homeHref} onClick={() => setMenuOpen(false)}>
+              CommerceForge
             </Link>
             <button aria-label={locale === "ar" ? "إغلاق القائمة" : "Close menu"} className="navbar-icon-button" onClick={() => setMenuOpen(false)} type="button">
               <X aria-hidden="true" size={19} />
@@ -159,6 +155,7 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
             <Link href={contactHref} onClick={() => setMenuOpen(false)}><MessageCircle aria-hidden="true" size={19} />{nav.contact}</Link>
           </nav>
           <div className="mobile-drawer-footer">
+            <MarketSwitcher locale={locale} />
             {user ? (
               <LogoutButton label={nav.logout} locale={locale} />
             ) : (

@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureOwnsStore
@@ -20,7 +21,11 @@ class EnsureOwnsStore
         $isStoreOwner = $user instanceof User
             && $user->role === 'merchant'
             && is_string($user->store_slug)
-            && hash_equals($user->store_slug, (string) $request->route('slug'));
+            && hash_equals($user->store_slug, (string) $request->route('slug'))
+            && DB::table('cf_stores')
+                ->where('slug', $user->store_slug)
+                ->where('owner_user_id', $user->id)
+                ->exists();
 
         abort_unless($isPlatformOwner || $isStoreOwner, 403);
 

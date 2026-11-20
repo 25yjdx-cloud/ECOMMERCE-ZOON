@@ -19,7 +19,7 @@ export default async function AdminClientsPage() {
       <section className="manager-connection" role="status">
         <div>
           <h2>إدارة النسخ غير مفعّلة بعد</h2>
-          <p>لا تُعرض بيانات عملاء أو اشتراكات قبل توصيل Bagisto وقاعدة البيانات.</p>
+          <p>لا تُعرض بيانات عملاء أو اشتراكات قبل توصيل خدمة المنصة وقاعدة البيانات.</p>
         </div>
       </section>
     </main>

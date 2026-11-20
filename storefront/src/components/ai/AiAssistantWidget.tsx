@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { MessageCircle, Send, X } from "lucide-react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { MockLocale } from "@/mock/types";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { getLocalAdvisorAnswer } from "@/lib/ai-advisor-kb";
 
 type Recommendation = {
   answer: string;
@@ -13,6 +15,7 @@ type Recommendation = {
   domain_tip: string;
   pricing: string;
   preview_url: string;
+  final_preview_url?: string;
 };
 type ChatMessage = { id: number; role: "assistant" | "user"; text: string; recommendation?: Recommendation };
 
@@ -54,6 +57,7 @@ const labels = {
     input: "اكتب سؤالك أو اختر اقتراحاً سريعاً",
     send: "إرسال",
     preview: "معاينة القالب الآن ←",
+    previewFinal: "معاينة النتيجة النهائية 100% ←",
     whatsapp: "تواصل مع فريق التنفيذ",
     close: "إغلاق المساعد",
     error: "تعذر الاتصال بالمساعد حالياً. حاول مجدداً.",
@@ -65,6 +69,7 @@ const labels = {
     input: "Ask a question or choose a quick prompt",
     send: "Send",
     preview: "Preview this template →",
+    previewFinal: "Preview the complete final store →",
     whatsapp: "Contact implementation team",
     close: "Close assistant",
     error: "The advisor is unavailable right now. Try again.",
@@ -80,19 +85,7 @@ export function AiAssistantWidget() {
   const [error, setError] = useState("");
   const text = labels[locale];
 
-  useEffect(() => {
-    const syncLocale = () => setLocale(document.documentElement.lang === "en" ? "en" : "ar");
-    syncLocale();
-    window.addEventListener("commerceforge:locale-change", syncLocale);
-    const openAssistant = () => setOpen(true);
-    window.addEventListener("commerceforge:open-ai", openAssistant);
-    return () => {
-      window.removeEventListener("commerceforge:locale-change", syncLocale);
-      window.removeEventListener("commerceforge:open-ai", openAssistant);
-    };
-  }, []);
-
-  async function ask(prompt: string) {
+  const ask = useCallback(async (prompt: string) => {
     const trimmed = prompt.trim();
     if (!trimmed || pending) return;
     setMessages((current) => [...current, { id: Date.now(), role: "user", text: trimmed }]);
@@ -101,6 +94,17 @@ export function AiAssistantWidget() {
     setError("");
 
     try {
+      const localRecommendation = getLocalAdvisorAnswer(trimmed, locale);
+      if (localRecommendation) {
+        setMessages((current) => [...current, {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: localRecommendation.answer,
+          recommendation: localRecommendation,
+        }]);
+        return;
+      }
+
       const response = await fetch("/api/ai/assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,7 +128,27 @@ export function AiAssistantWidget() {
     } finally {
       setPending(false);
     }
-  }
+  }, [locale, pending, text]);
+
+  useEffect(() => {
+    const syncLocale = () => setLocale(document.documentElement.lang === "en" ? "en" : "ar");
+    syncLocale();
+    window.addEventListener("commerceforge:locale-change", syncLocale);
+    const openAssistant = () => setOpen(true);
+    window.addEventListener("commerceforge:open-ai", openAssistant);
+    const askFromLanding = (event: Event) => {
+      const prompt = (event as CustomEvent<unknown>).detail;
+      if (typeof prompt !== "string" || !prompt.trim()) return;
+      setOpen(true);
+      void ask(prompt);
+    };
+    window.addEventListener("commerceforge:ask-ai", askFromLanding);
+    return () => {
+      window.removeEventListener("commerceforge:locale-change", syncLocale);
+      window.removeEventListener("commerceforge:open-ai", openAssistant);
+      window.removeEventListener("commerceforge:ask-ai", askFromLanding);
+    };
+  }, [ask]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,12 +165,12 @@ export function AiAssistantWidget() {
         title={text.trigger}
         type="button"
       >
-        <Sparkles aria-hidden="true" size={19} />
+        <BrandLogo size={24} variant="mark" />
       </button>
       {open && (
         <aside aria-label={text.title} className="ai-assistant-drawer" dir={locale === "ar" ? "rtl" : "ltr"}>
           <header>
-            <span className="ai-assistant-mark"><Bot aria-hidden="true" size={20} /></span>
+            <span className="ai-assistant-mark"><BrandLogo size={28} variant="mark" /></span>
             <strong>{text.title}</strong>
             <button aria-label={text.close} className="utility-icon-button" onClick={() => setOpen(false)} type="button">
               <X aria-hidden="true" size={18} />
@@ -167,6 +191,12 @@ export function AiAssistantWidget() {
                     <span>{message.recommendation.pricing}</span>
                     <Link className="button-link" href={`${message.recommendation.preview_url}?lang=${locale}`}>
                       {text.preview}
+                    </Link>
+                    <Link
+                      className="button-link secondary"
+                      href={`${message.recommendation.final_preview_url ?? message.recommendation.preview_url.replace("/preview/", "/final-preview/")}?lang=${locale}`}
+                    >
+                      {text.previewFinal}
                     </Link>
                   </div>
                 )}

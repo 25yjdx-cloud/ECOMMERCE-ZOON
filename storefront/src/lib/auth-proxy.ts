@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE, getBackendAuthUrl, isAuthUser } from "./auth";
+import { AUTH_COOKIE, getBackendAuthUrl, hasSameOrigin, isAuthUser } from "./auth";
 
 export async function proxyAuth(
   request: Request,
-  endpoint: "login" | "register" | "firebase-google",
+  endpoint: "login" | "register" | "firebase" | "firebase-google",
 ): Promise<NextResponse> {
+  if ((endpoint === "firebase" || endpoint === "firebase-google") && !hasSameOrigin(request)) {
+    return NextResponse.json({ message: "طلب غير صالح." }, { status: 403 });
+  }
+
   const response = await fetch(getBackendAuthUrl(`api/v1/auth/${endpoint}`), {
     method: "POST",
     headers: {
@@ -34,7 +38,7 @@ export async function proxyAuth(
   const result = NextResponse.json({ user: payload.user });
   result.cookies.set(AUTH_COOKIE, payload.token, {
     httpOnly: true,
-    maxAge: 60 * 60 * 24,
+    maxAge: 60 * 60 * 2,
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

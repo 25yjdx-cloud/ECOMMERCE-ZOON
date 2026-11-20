@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { getAuthToken, getBackendAuthUrl } from "@/lib/auth";
+import { getAuthToken, getBackendAuthUrl, hasSameOrigin } from "@/lib/auth";
 
 type ManagerRouteContext = {
   params: Promise<{ slug: string; resource?: string[] }>;
 };
 
 async function forward(request: Request, context: ManagerRouteContext): Promise<NextResponse> {
+  if (!["GET", "HEAD"].includes(request.method) && !hasSameOrigin(request)) {
+    return NextResponse.json({ message: "Invalid request origin." }, { status: 403 });
+  }
+
   const { slug, resource = [] } = await context.params;
   const token = await getAuthToken();
   if (!token) return NextResponse.json({ message: "غير مصرح." }, { status: 401 });

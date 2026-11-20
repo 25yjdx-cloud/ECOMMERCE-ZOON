@@ -4,6 +4,9 @@ import { CartProvider } from "@/components/cart/CartProvider";
 import { LocaleSync } from "@/components/storefront/LocaleSync";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { AiAssistantWidget } from "@/components/ai/AiAssistantWidget";
+import { Preloader } from "@/components/brand/Preloader";
+import { WelcomeModal } from "@/components/brand/WelcomeModal";
+import { HybridWorkflowModal } from "@/components/landing/HybridWorkflowModal";
 import "./globals.css";
 
 const arabicFont = Cairo({
@@ -26,6 +29,21 @@ export const metadata: Metadata = {
     template: "%s | CommerceForge",
   },
   description: "معرض قوالب CommerceForge ومعاينات المتاجر التجريبية.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.svg",
+  },
+  openGraph: {
+    title: "CommerceForge | من الفكرة إلى متجرك",
+    description: "أطلق 70% من متجرك فوراً، ثم أكمل اللمسات النهائية مع المطور خلال 24–48 ساعة.",
+    siteName: "CommerceForge",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "CommerceForge | من الفكرة إلى متجرك",
+    description: "70% إطلاق فوري + 30% مراجعة وتظبيط نهائي من المطور.",
+  },
 };
 
 export default function RootLayout({
@@ -46,6 +64,9 @@ export default function RootLayout({
         <LocaleSync />
         <ThemeProvider>
           <CartProvider>
+            <Preloader />
+            <WelcomeModal />
+            <HybridWorkflowModal />
             {children}
             <AiAssistantWidget />
           </CartProvider>

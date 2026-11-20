@@ -33,6 +33,10 @@ import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocument
 import type { AuthUser } from "@/lib/auth";
 import { QuoteRequestForm } from "./QuoteRequestForm";
 import { Footer } from "./Footer";
+import { OpenAssistantButton } from "./OpenAssistantButton";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { OpenHybridWorkflowButton } from "./HybridWorkflowModal";
+import { BusinessAdvisorCard } from "./BusinessAdvisorCard";
 
 type LandingExperienceProps = {
   locale: MockLocale;
@@ -70,9 +74,10 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
   const faqs = [
     [content.faqDeliveryQ, content.faqDeliveryA],
     [content.faqOwnershipQ, content.faqOwnershipA],
-    [content.faqArabicQ, content.faqArabicA],
-    [content.faqDomainQ, content.faqDomainA],
+    [content.faqPlansQ, content.faqPlansA],
     [content.faqPaymentsQ, content.faqPaymentsA],
+    [content.faqToolsQ, content.faqToolsA],
+    [content.faqTrialQ, content.faqTrialA],
   ];
 
   return (
@@ -80,20 +85,27 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
       <LocaleDocumentAttributes locale={locale} />
       <LandingHeader locale={locale} dictionary={dictionary} user={user} />
       <main lang={locale} dir={isArabic ? "rtl" : "ltr"}>
-        <section className="landing-hero">
-          <div className="landing-hero-inner">
-            <FadeUpInView className="hero-copy">
-              <span className="eyebrow">{content.heroEyebrow}</span>
-              <h1>
-                {content.heroTitle}{" "}
-                <span className="hero-title-highlight">{content.heroTitleHighlight}</span>
-              </h1>
-              <p>{content.heroDescription}</p>
-              <div className="button-row">
-                <SpringLink className="button-link" href={`/gallery?lang=${locale}`}>{content.explorePresets}</SpringLink>
-                <SpringLink className="button-link secondary" href={`/preview/fashion?lang=${locale}`}>{dictionary.navigation.livePreview}</SpringLink>
-              </div>
-            </FadeUpInView>
+        <section className="landing-hero px-4 sm:px-6 pt-6 pb-12">
+          <div className="cf-hero-unified-card">
+            <div className="cf-hero-bg-grid" aria-hidden="true" />
+            <div className="cf-hero-glow" aria-hidden="true" />
+            <div className="cf-hero-vignette" aria-hidden="true" />
+            <div className="landing-hero-inner">
+              <FadeUpInView className="hero-copy">
+                <OpenHybridWorkflowButton locale={locale}>{content.heroEyebrow}</OpenHybridWorkflowButton>
+                <div className="cf-hero-logo-stage">
+                  <BrandLogo className="hero-brand-logo" size={76} variant="full" />
+                </div>
+                <h1>
+                  {content.heroTitle}{" "}
+                  <span className="hero-title-highlight">{content.heroTitleHighlight}</span>
+                </h1>
+                <p>{content.heroDescription}</p>
+                <div className="button-row">
+                  <SpringLink className="button-link" href={`/templates?lang=${locale}`}>{content.explorePresets}</SpringLink>
+                  <SpringLink className="button-link secondary" href={`/final-preview/classic?lang=${locale}`}>{dictionary.navigation.livePreview}</SpringLink>
+                </div>
+              </FadeUpInView>
             <div className="hero-visual">
               <FloatingIsometricCard className="hero-float-card">
                 <div className="browser-frame" aria-label={dictionary.navigation.livePreview}>
@@ -135,6 +147,7 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
                   </FloatingOrbitPill>
                 ))}
               </div>
+            </div>
             </div>
           </div>
         </section>
@@ -195,9 +208,15 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
             {content.bentoItems.map((item, index) => (
               <StaggerItem className={`bento-item bento-item-${index + 1}`} key={item.title}>
                 <HoverLiftCard className="bento-card">
+                  {index === 0 && <BrandLogo className="bento-brand-watermark" size={146} variant="watermark" />}
                   <BentoArtwork index={index} dictionary={dictionary} />
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
+                  {index === 4 && (
+                    <OpenAssistantButton>
+                      {isArabic ? "من وصف نشاطك إلى اقتراح مبدئي ←" : "Describe your business for a recommendation →"}
+                    </OpenAssistantButton>
+                  )}
                 </HoverLiftCard>
               </StaggerItem>
             ))}
@@ -228,6 +247,9 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
             <div className="feature-copy">
               <h3>{content.variantsTitle}</h3>
               <p>{content.variantsText}</p>
+              <Link className="text-button" href={`/dashboard/my-store?lang=${locale}`}>
+                {isArabic ? "إدارة المقاسات والمخزون ←" : "Manage sizes and inventory →"}
+              </Link>
             </div>
             <div className="feature-mockup" aria-label={content.variantsTitle}>
               <div className="mockup-titlebar"><span>{dictionary.dashboard.products}</span><span>{dictionary.dashboard.quantity}</span></div>
@@ -244,6 +266,9 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
             <div className="feature-copy">
               <h3>{content.analyticsTitle}</h3>
               <p>{content.analyticsText}</p>
+              <Link className="text-button" href={`/dashboard/my-store?lang=${locale}`}>
+                {isArabic ? "عرض لوحة متجري ←" : "Open my store dashboard →"}
+              </Link>
             </div>
             <div className="feature-mockup" aria-label={content.analyticsTitle}>
               <div className="mockup-titlebar"><span>{content.analyticsTitle}</span><span>{dictionary.dashboard.demoData}</span></div>
@@ -270,7 +295,7 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
               <span className="eyebrow">{content.assistantEyebrow}</span>
               <h2 id="assistant-title">{content.assistantTitle}</h2>
               <p>{content.assistantText}</p>
-              <span className="concept-label">{content.conceptPreview}</span>
+              <BusinessAdvisorCard locale={locale} />
             </div>
             <FloatingChatPulse className="assistant-chat">
               <div className="chat-bubble">{content.assistantQuestion}</div>
@@ -283,10 +308,21 @@ export function LandingExperience({ locale, dictionary, presets, user }: Landing
 
         <FadeUpSection className="content-section page-shell" id="contact" aria-labelledby="quote-title">
           <div className="contact-card">
-            <div className="section-intro">
-              <h2 id="quote-title">{content.quoteTitle}</h2>
-              <p>{content.quoteText}</p>
-            </div>
+            <aside className="developer-consultation-card">
+              <h2 id="quote-title">
+                {locale === "ar"
+                  ? "تواصل مباشر مع المطور لبناء متجرك من الصفر"
+                  : "Build your store from scratch with direct developer support"}
+              </h2>
+              <p>
+                {locale === "ar"
+                  ? "تواصل مباشرة مع المطور لتصميم وبناء متجرك الإلكتروني من الصفر بهوية مخصصة، ربط الدفع والشحن، وتسليم كامل الكود والبيانات بملكية 100%."
+                  : "Contact the developer directly to design and build your online store from scratch with a custom identity, payment and shipping integrations, and complete code and data ownership."}
+              </p>
+              <a className="button-link" href="https://wa.me/201145335168">
+                {locale === "ar" ? "اتصل بنا" : "Contact us"}
+              </a>
+            </aside>
             <QuoteRequestForm content={dictionary.quote} locale={locale} />
           </div>
         </FadeUpSection>

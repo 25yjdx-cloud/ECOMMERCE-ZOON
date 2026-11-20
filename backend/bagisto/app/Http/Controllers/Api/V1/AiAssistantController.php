@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CommerceForge\AiAssistRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class AiAssistantController extends Controller
@@ -32,18 +33,18 @@ class AiAssistantController extends Controller
         ],
     ];
 
-    public function assist(Request $request): JsonResponse
+    public function assist(AiAssistRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'question' => ['required', 'string', 'min:2', 'max:1000'],
-            'locale' => ['required', 'in:ar,en'],
-        ]);
+        $data = $request->validated();
         $locale = $data['locale'];
         $template = $this->recommendTemplate($data['question']);
         $recommendation = self::RECOMMENDATIONS[$template][$locale];
+        if (! $this->hasKnownIntent($data['question'])) {
+            $this->recordUnansweredQuestion($data['question'], $locale);
+        }
         $pricing = $locale === 'ar'
-            ? 'ابدأ مجاناً؛ باقات SaaS من 399 إلى 999 ج.م شهرياً، أو تنفيذ خاص من 2,000 إلى 7,000 ج.م.'
-            : 'Start free; SaaS plans range from EGP 399 to 999 monthly, or choose turnkey implementation from EGP 2,000 to 7,000.';
+            ? 'ابدأ بتجربة مجانية 14 يوماً؛ الاشتراكات من 399 إلى 999 ج.م في مصر أو 49 إلى 119 ر.س في السعودية، والتنفيذ الخاص حسب السوق.'
+            : 'Start with a 14-day free trial; subscriptions range from EGP 399–999 in Egypt or SAR 49–119 in Saudi Arabia, with turnkey pricing by market.';
         $answer = $locale === 'ar'
             ? "أنسب بداية هي قالب {$recommendation['name']}. {$recommendation['color']}. يمكنك البدء بالباقة المجانية وتجربة المتجر قبل الترقية."
             : "A good starting point is the {$recommendation['name']} template. {$recommendation['color']}. Start free and test your store before upgrading.";
@@ -55,8 +56,8 @@ class AiAssistantController extends Controller
             || str_contains($normalizedQuestion, 'subscription')
         ) {
             $answer = $locale === 'ar'
-                ? 'الاشتراك الشهري يتيح لك إدارة متجرك بنفسك على المنصة، ويبدأ مجاناً ثم 399 أو 599 أو 999 ج.م شهرياً. التنفيذ الخاص خدمة تجهيز مخصصة لمرة واحدة بأسعار 2,000 أو 4,500 أو 7,000 ج.م، ولا تشمل الاستضافة أو الدومين.'
-                : 'A monthly subscription lets you run your store on the platform: free, then EGP 399, 599 or 999 per month. Turnkey implementation is a one-time tailored setup for EGP 2,000, 4,500 or 7,000, excluding hosting and domain.';
+                ? 'الاشتراك الشهري يتيح لك إدارة متجرك بنفسك مع تجربة 14 يوماً: مصر 399 أو 599 أو 999 ج.م، والسعودية 49 أو 69 أو 119 ر.س. التنفيذ الخاص لمرة واحدة: مصر 2,000 أو 4,500 أو 7,000 ج.م، والسعودية 179 أو 379 أو 599 ر.س.'
+                : 'Subscriptions include a 14-day trial: Egypt EGP 399/599/999 and Saudi Arabia SAR 49/69/119 monthly. One-time turnkey setup is EGP 2,000/4,500/7,000 or SAR 179/379/599.';
         } elseif (
             str_contains($normalizedQuestion, 'ألوان')
             || str_contains($normalizedQuestion, 'هوية')
@@ -89,8 +90,8 @@ class AiAssistantController extends Controller
                         [
                             'role' => 'system',
                             'content' => $locale === 'ar'
-                                ? 'أنت مساعد CommerceForge للمتاجر في مصر. أجب بإيجاز وبالعربية، ولا تخترع أسعاراً خارج: اشتراك 0 أو 399 أو 599 أو 999 ج.م شهرياً؛ والتنفيذ الخاص 2000 أو 4500 أو 7000 ج.م.'
-                                : 'You are the CommerceForge store advisor for Egypt. Answer concisely in English. Do not invent prices beyond monthly plans EGP 0, 399, 599, 999 and turnkey packages EGP 2,000, 4,500, 7,000.',
+                                ? 'أنت مساعد CommerceForge. أجب بإيجاز وبالعربية، والأسعار الثابتة: مصر 0/399/599/999 ج.م شهرياً والسعودية 0/49/69/119 ر.س شهرياً؛ التنفيذ الخاص مصر 2000/4500/7000 ج.م والسعودية 179/379/599 ر.س. التجربة 14 يوماً ونموذج الإطلاق 70/30.'
+                                : 'You are the CommerceForge store advisor. Answer concisely in English. Fixed monthly plans: Egypt EGP 0/399/599/999 and Saudi Arabia SAR 0/49/69/119; turnkey Egypt EGP 2,000/4,500/7,000 and Saudi Arabia SAR 179/379/599. Trial is 14 days; launch model is 70/30.',
                         ],
                         ['role' => 'user', 'content' => $data['question']],
                     ],
@@ -100,8 +101,32 @@ class AiAssistantController extends Controller
             if (! $response->successful()) {
                 return response()->json(['message' => 'The AI provider is temporarily unavailable.'], 502);
             }
-
             $content = $response->json('choices.0.message.content');
+            if (is_string($content) && trim($content) !== '') {
+                $answer = trim($content);
+            }
+        } elseif (config('services.ai.provider') === 'gemini' && config('services.ai.gemini_api_key')) {
+            $model = rawurlencode((string) config('services.ai.gemini_model'));
+            $response = Http::acceptJson()
+                ->withHeaders(['x-goog-api-key' => (string) config('services.ai.gemini_api_key')])
+                ->timeout(20)
+                ->post('https://generativelanguage.googleapis.com/v1beta/models/'.$model.':generateContent', [
+                    'systemInstruction' => [
+                        'parts' => [[
+                            'text' => $locale === 'ar'
+                                ? 'أنت مساعد CommerceForge. أجب بالعربية بإيجاز، والتزم بالأسعار المعتمدة لمصر والسعودية والتجربة المجانية 14 يوماً.'
+                                : 'You are the CommerceForge advisor. Answer concisely in English and use only approved Egypt and Saudi prices and the 14-day trial.',
+                        ]],
+                    ],
+                    'contents' => [['role' => 'user', 'parts' => [['text' => $data['question']]]]],
+                    'generationConfig' => ['maxOutputTokens' => 350],
+                ]);
+
+            if (! $response->successful()) {
+                return response()->json(['message' => 'The AI provider is temporarily unavailable.'], 502);
+            }
+
+            $content = $response->json('candidates.0.content.parts.0.text');
             if (is_string($content) && trim($content) !== '') {
                 $answer = trim($content);
             }
@@ -116,6 +141,7 @@ class AiAssistantController extends Controller
                 'domain_tip' => $domainTip,
                 'pricing' => $pricing,
                 'preview_url' => '/preview/'.$template,
+                'final_preview_url' => '/final-preview/'.$template,
             ],
         ]);
     }
@@ -146,5 +172,70 @@ class AiAssistantController extends Controller
             str_contains($normalized, 'local brand') => 'local-brand',
             default => 'classic',
         };
+    }
+
+    private function hasKnownIntent(string $question): bool
+    {
+        $normalized = mb_strtolower($question);
+        $knownTerms = [
+            'business_type:', 'ملابس', 'أزياء', 'fashion', 'clothing', 'رياض', 'جيم', 'sports', 'gym',
+            'أثاث', 'ديكور', 'furniture', 'decor', 'لوكال', 'محلي', 'local brand', 'هدايا', 'gifts',
+            'عطور', 'perfume', 'إلكترونيات', 'electronics', 'قهوة', 'كافيه', 'coffee', 'digital',
+            'باقات', 'اشتراك', 'pricing', 'subscription', 'سعر', 'price', 'تجربة', 'trial', 'مجاني',
+            '70%', '30%', 'إطلاق', 'launch', 'ألوان', 'هوية', 'color', 'brand', 'واتساب', 'whatsapp',
+            'الدفع', 'cod', 'instapay', 'فودافون', 'mada', 'stc pay', 'apple pay', 'شحن', 'shipping',
+            'باركود', 'barcode', 'بيكسل', 'pixel', 'دومين', 'domain', 'سلة', 'cart', 'مخزون', 'inventory',
+            'ملكية', 'ownership', 'كوبون', 'coupon', 'تحليلات', 'analytics', 'تسجيل', 'register',
+            'قالب', 'template', 'صور', 'products', 'أمان', 'security', 'استضافة', 'hosting', 'دعم', 'support',
+        ];
+
+        foreach ($knownTerms as $term) {
+            if (str_contains($normalized, mb_strtolower($term))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function recordUnansweredQuestion(string $question, string $locale): void
+    {
+        $sanitizedQuestion = preg_replace(
+            ['/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/u', '/\+?\d[\d\s().-]{7,}\d/u'],
+            ['[email]', '[phone]'],
+            $question,
+        );
+        if (! is_string($sanitizedQuestion) || trim($sanitizedQuestion) === '') {
+            return;
+        }
+
+        $normalizedQuestion = mb_strtolower(trim($sanitizedQuestion));
+        $hash = hash('sha256', $locale.'|'.$normalizedQuestion);
+        DB::transaction(function () use ($hash, $sanitizedQuestion, $locale) {
+            $existing = DB::table('ai_unanswered_queries')
+                ->where('question_hash', $hash)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                DB::table('ai_unanswered_queries')->where('id', $existing->id)->update([
+                    'occurrences' => $existing->occurrences + 1,
+                    'last_asked_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                return;
+            }
+
+            DB::table('ai_unanswered_queries')->insert([
+                'question_hash' => $hash,
+                'question' => trim($sanitizedQuestion),
+                'locale' => $locale,
+                'occurrences' => 1,
+                'last_asked_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
     }
 }

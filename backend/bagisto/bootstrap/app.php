@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\CommerceForgeSecurityHeaders;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Cookie\Middleware\EncryptCookies as BaseEncryptCookies;
 use Illuminate\Foundation\Application;
@@ -8,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Webkul\Core\Http\Middleware\SecureHeaders;
 use Webkul\Installer\Http\Middleware\CanInstall;
 
@@ -27,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
          * As of now, this has been added in the Admin and Shop providers. I will look for a better approach in Laravel 11 for this.
          */
         $middleware->remove(PreventRequestsDuringMaintenance::class);
+        $middleware->prepend(\App\Http\Middleware\ForceHttps::class);
 
         /**
          * Remove the default Laravel middleware that converts empty strings to null. First, handle all nullable cases,
@@ -35,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->remove(ConvertEmptyStringsToNull::class);
 
         $middleware->append(SecureHeaders::class);
+        $middleware->append(CommerceForgeSecurityHeaders::class);
         $middleware->append(CanInstall::class);
 
         /**
@@ -46,11 +50,26 @@ return Application::configure(basePath: dirname(__DIR__))
             'stripe/*',
         ]);
 
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(at: array_values(array_filter(array_map(
+            'trim',
+            explode(',', env('TRUSTED_PROXIES', '127.0.0.1,::1')),
+        ))));
     })
     ->withSchedule(function (Schedule $schedule) {
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Throwable $exception, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') && app()->environment('production')) {
+                $status = $exception instanceof HttpExceptionInterface
+                    ? $exception->getStatusCode()
+                    : 500;
+
+                if ($status >= 500) {
+                    return response()->json(['message' => 'An unexpected error occurred.'], $status);
+                }
+            }
+
+            return null;
+        });
     })->create();

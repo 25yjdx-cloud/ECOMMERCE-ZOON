@@ -3,7 +3,20 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CommerceForge\AiAssistRequest;
+use App\Http\Requests\CommerceForge\CategoryRequest;
+use App\Http\Requests\CommerceForge\CloneStoreRequest;
+use App\Http\Requests\CommerceForge\CreateMerchantStoreRequest;
+use App\Http\Requests\CommerceForge\CreateOrderRequest;
+use App\Http\Requests\CommerceForge\CreateQuoteRequest;
+use App\Http\Requests\CommerceForge\ProductRequest;
+use App\Http\Requests\CommerceForge\UpdateOrderStatusRequest;
+use App\Http\Requests\CommerceForge\UpdateRefinementStatusRequest;
+use App\Http\Requests\CommerceForge\TrackOrderRequest;
+use App\Http\Requests\CommerceForge\UpdateShippingRatesRequest;
+use App\Http\Requests\CommerceForge\UpdateStoreConfigRequest;
 use App\Models\User;
+use App\Repositories\CommerceForgeStoreRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,15 +24,41 @@ use Illuminate\Support\Str;
 
 class CommerceForgeController extends Controller
 {
-    private const GOVERNORATES = [
-        'cairo' => 50, 'giza' => 50, 'alexandria' => 65, 'dakahlia' => 70,
-        'gharbia' => 70, 'sharqia' => 70, 'monufia' => 70, 'qalyubia' => 60,
-        'beheira' => 75, 'kafr-el-sheikh' => 75, 'damietta' => 75, 'port-said' => 75,
-        'ismailia' => 75, 'suez' => 75, 'faiyum' => 80, 'beni-suef' => 80,
-        'minya' => 85, 'asyut' => 85, 'sohag' => 90, 'qena' => 90,
-        'luxor' => 95, 'aswan' => 95, 'red-sea' => 100, 'matrouh' => 100,
-        'north-sinai' => 110, 'south-sinai' => 110, 'new-valley' => 110,
-    ];
+    public function __construct(private readonly CommerceForgeStoreRepository $storeRepository) {}
+
+    public function refinementQueue(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->storeRepository->refinementQueue(),
+            'summary' => $this->storeRepository->platformSummary(),
+            'leads' => DB::table('cf_quote_requests')->orderByDesc('id')->limit(50)->get(),
+            'merchant_contacts' => DB::table('users')
+                ->where('role', 'merchant')
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get(['name', 'email', 'whatsapp_phone', 'market', 'store_slug']),
+            'unanswered_queries' => DB::table('ai_unanswered_queries')
+                ->orderByDesc('last_asked_at')
+                ->limit(50)
+                ->get(['question', 'locale', 'occurrences', 'last_asked_at']),
+        ]);
+    }
+
+    public function updateRefinementStatus(UpdateRefinementStatusRequest $request, string $slug): JsonResponse
+    {
+        $data = $request->validated();
+
+        return response()->json(['data' => $this->storeRepository->updateRefinementStatus($slug, $data['status'])]);
+    }
+
+    public function trackOrder(TrackOrderRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $order = $this->storeRepository->trackOrder($data['order_number'], $data['phone']);
+        abort_unless($order, 404, 'Order not found.');
+
+        return response()->json(['data' => $order]);
+    }
 
     public function templates(): JsonResponse
     {
@@ -44,25 +83,47 @@ class CommerceForgeController extends Controller
                 'slug' => $store->slug,
                 'templateSlug' => $store->template_slug,
                 'config' => json_decode($store->config, true, flags: JSON_THROW_ON_ERROR),
+                'shipping' => $this->shippingSettingsForStore($store),
+                'paused' => $this->storeIsPaused($store),
+                'trial_ends_at' => $store->trial_ends_at,
             ],
         ]);
     }
 
-    public function updateStoreConfig(Request $request, string $slug): JsonResponse
+    public function shippingRates(string $slug): JsonResponse
     {
-        $data = $request->validate([
-            'store_name' => ['sometimes', 'required', 'string', 'min:2', 'max:120'],
-            'logo_url' => ['nullable', 'url', 'max:2048'],
-            'whatsapp' => ['nullable', 'regex:/^01[0125][0-9]{8}$/'],
-            'primary_color' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'background_color' => ['sometimes', 'required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'mode' => ['sometimes', 'required', 'in:light,dark'],
-            'hero_title' => ['sometimes', 'required', 'string', 'max:180'],
-            'hero_subtitle' => ['nullable', 'string', 'max:500'],
-            'hero_cta' => ['sometimes', 'required', 'string', 'max:60'],
-            'sections' => ['sometimes', 'required', 'array'],
-            'sections.*' => ['boolean'],
-        ]);
+        $store = DB::table('cf_stores')->where('slug', $slug)->first();
+        abort_unless($store, 404);
+
+        return response()->json(['data' => $this->shippingSettingsForStore($store)]);
+    }
+
+    public function updateShippingRates(UpdateShippingRatesRequest $request, string $slug): JsonResponse
+    {
+        $data = $request->validated();
+        $now = now();
+
+        DB::transaction(function () use ($data, $slug, $now) {
+            DB::table('cf_store_shipping_rates')->where('store_slug', $slug)->delete();
+            DB::table('cf_store_shipping_rates')->insert(array_map(
+                fn (array $rate) => [
+                    'store_slug' => $slug,
+                    'governorate' => $rate['governorate'],
+                    'fee' => $rate['fee'],
+                    'requires_approval' => $data['requires_approval'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                $data['rates'],
+            ));
+        });
+
+        return $this->shippingRates($slug);
+    }
+
+    public function updateStoreConfig(UpdateStoreConfigRequest $request, string $slug): JsonResponse
+    {
+        $data = $request->validated();
         $store = DB::table('cf_stores')->where('slug', $slug)->first();
         abort_unless($store, 404);
         $config = array_replace_recursive(json_decode($store->config, true, flags: JSON_THROW_ON_ERROR), $data);
@@ -74,11 +135,9 @@ class CommerceForgeController extends Controller
         return response()->json(['data' => $config]);
     }
 
-    public function cloneStore(Request $request, string $slug): JsonResponse
+    public function cloneStore(CloneStoreRequest $request, string $slug): JsonResponse
     {
-        $data = $request->validate([
-            'client_slug' => ['required', 'string', 'min:3', 'max:48', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:cf_stores,slug'],
-        ]);
+        $data = $request->validated();
         $source = DB::table('cf_stores')->where('slug', $slug)->first();
         abort_unless($source, 404);
 
@@ -92,22 +151,15 @@ class CommerceForgeController extends Controller
         return response()->json(['id' => $cloneId, 'slug' => $data['client_slug']], 201);
     }
 
-    public function createMerchantStore(Request $request): JsonResponse
+    public function createMerchantStore(CreateMerchantStoreRequest $request): JsonResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User && $user->role === 'merchant', 403);
         abort_if($user->store_slug !== null, 409, 'This account already has a store.');
 
-        $data = $request->validate([
-            'store_slug' => ['required', 'string', 'min:3', 'max:48', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:cf_stores,slug'],
-            'template_slug' => ['required', 'string', 'exists:cf_templates,slug'],
-            'store_name' => ['required', 'string', 'min:2', 'max:120'],
-            'logo_url' => ['nullable', 'url', 'max:2048'],
-            'primary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'whatsapp' => ['required', 'regex:/^01[0125][0-9]{8}$/'],
-            'domain_mode' => ['required', 'in:subdomain,custom'],
-            'custom_domain' => ['nullable', 'string', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/i'],
-        ]);
+        $data = $request->validated();
+        $data['domain_mode'] = $data['hosting_mode'] === 'saas' ? 'subdomain' : 'custom';
+        $trialEndsAt = now()->addDays(14);
 
         abort_unless(
             DB::table('cf_templates')->where('slug', $data['template_slug'])->where('status', 'live')->exists(),
@@ -123,16 +175,30 @@ class CommerceForgeController extends Controller
             'primary_color' => $data['primary_color'],
             'whatsapp' => $data['whatsapp'],
             'plan' => 'free',
+            'market' => $data['market'],
+            'trial_ends_at' => $trialEndsAt->toIso8601String(),
+            'hosting_mode' => $data['hosting_mode'],
             'domain_mode' => $data['domain_mode'],
             'domain' => $data['domain_mode'] === 'subdomain'
                 ? $data['store_slug'].'.elmatajer.com'
                 : ($data['custom_domain'] ?? null),
             'custom_domain_status' => $data['domain_mode'] === 'custom' ? 'pending' : 'active',
+            'build_completion' => 70,
+            'developer_refinement_status' => 'pending',
         ]);
 
-        $storeId = DB::transaction(function () use ($source, $data, $config, $user) {
+        $storeId = DB::transaction(function () use ($source, $data, $config, $user, $trialEndsAt) {
             $id = $this->duplicateStoreContents($source, $data['store_slug'], $user->id, $config);
-            $user->forceFill(['store_slug' => $data['store_slug']])->save();
+            DB::table('cf_stores')->where('id', $id)->update([
+                'trial_ends_at' => $trialEndsAt,
+                'subscription_status' => 'trialing',
+            ]);
+            $this->storeRepository->createInitialProducts($data['store_slug'], $data['initial_products'] ?? []);
+            $user->forceFill([
+                'store_slug' => $data['store_slug'],
+                'market' => $data['market'],
+                'whatsapp_phone' => $data['whatsapp'],
+            ])->save();
 
             return $id;
         });
@@ -143,7 +209,10 @@ class CommerceForgeController extends Controller
                 'slug' => $data['store_slug'],
                 'domain' => $config['domain'],
                 'plan' => $config['plan'],
+                'hosting_mode' => $config['hosting_mode'],
                 'custom_domain_status' => $config['custom_domain_status'],
+                'build_completion' => $config['build_completion'],
+                'developer_refinement_status' => $config['developer_refinement_status'],
             ],
         ], 201);
     }
@@ -192,9 +261,15 @@ class CommerceForgeController extends Controller
         return $id;
     }
 
-    public function products(string $slug): JsonResponse
+    public function products(Request $request, string $slug): JsonResponse
     {
-        abort_unless(DB::table('cf_stores')->where('slug', $slug)->exists(), 404);
+        $store = DB::table('cf_stores')->where('slug', $slug)->first();
+        abort_unless($store, 404);
+        abort_if(
+            ! $request->user() && $this->storeIsPaused($store),
+            410,
+            'هذا المتجر متوقف مؤقتاً لانتهاء الفترة التجريبية — يرجى تجديد الاشتراك لإعادة التفعيل فوراً',
+        );
 
         return response()->json([
             'data' => DB::table('cf_products')
@@ -209,7 +284,7 @@ class CommerceForgeController extends Controller
         ]);
     }
 
-    public function createProduct(Request $request, string $slug): JsonResponse
+    public function createProduct(ProductRequest $request, string $slug): JsonResponse
     {
         $data = $this->validatedProduct($request);
         abort_unless(DB::table('cf_stores')->where('slug', $slug)->exists(), 404);
@@ -222,7 +297,7 @@ class CommerceForgeController extends Controller
         return response()->json(['data' => DB::table('cf_products')->find($id)], 201);
     }
 
-    public function updateProduct(Request $request, string $slug, int $product): JsonResponse
+    public function updateProduct(ProductRequest $request, string $slug, int $product): JsonResponse
     {
         $data = $this->validatedProduct($request);
         $row = DB::table('cf_products')->where('store_slug', $slug)->where('id', $product)->first();
@@ -249,13 +324,10 @@ class CommerceForgeController extends Controller
         return response()->json(['data' => DB::table('cf_categories')->where('store_slug', $slug)->orderBy('name_ar')->get()]);
     }
 
-    public function createCategory(Request $request, string $slug): JsonResponse
+    public function createCategory(CategoryRequest $request, string $slug): JsonResponse
     {
         abort_unless(DB::table('cf_stores')->where('slug', $slug)->exists(), 404);
-        $data = $request->validate([
-            'name_ar' => ['required', 'string', 'min:2', 'max:100'],
-            'name_en' => ['required', 'string', 'min:2', 'max:100'],
-        ]);
+        $data = $request->validated();
         $now = now();
         $id = DB::table('cf_categories')->insertGetId([
             ...$data, 'store_slug' => $slug, 'created_at' => $now, 'updated_at' => $now,
@@ -264,12 +336,9 @@ class CommerceForgeController extends Controller
         return response()->json(['data' => DB::table('cf_categories')->find($id)], 201);
     }
 
-    public function updateCategory(Request $request, string $slug, int $category): JsonResponse
+    public function updateCategory(CategoryRequest $request, string $slug, int $category): JsonResponse
     {
-        $data = $request->validate([
-            'name_ar' => ['required', 'string', 'min:2', 'max:100'],
-            'name_en' => ['required', 'string', 'min:2', 'max:100'],
-        ]);
+        $data = $request->validated();
         $updated = DB::table('cf_categories')->where('store_slug', $slug)->where('id', $category)->update([
             ...$data, 'updated_at' => now(),
         ]);
@@ -293,9 +362,9 @@ class CommerceForgeController extends Controller
         return response()->json(['data' => DB::table('cf_orders')->where('store_slug', $slug)->orderByDesc('id')->get()]);
     }
 
-    public function updateOrderStatus(Request $request, string $slug, int $order): JsonResponse
+    public function updateOrderStatus(UpdateOrderStatusRequest $request, string $slug, int $order): JsonResponse
     {
-        $data = $request->validate(['status' => ['required', 'in:new,processing,shipped,delivered,cancelled']]);
+        $data = $request->validated();
         $updated = DB::table('cf_orders')->where('store_slug', $slug)->where('id', $order)->update([
             'status' => $data['status'],
             'updated_at' => now(),
@@ -305,22 +374,21 @@ class CommerceForgeController extends Controller
         return response()->json(['data' => DB::table('cf_orders')->find($order)]);
     }
 
-    public function createOrder(Request $request): JsonResponse
+    public function createOrder(CreateOrderRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'storeSlug' => ['required', 'string', 'exists:cf_stores,slug'],
-            'customer.name' => ['required', 'string', 'min:4', 'max:120', 'regex:/^[\p{Arabic}a-zA-Z\s]+$/u', 'not_regex:/(.)\1{2,}/u'],
-            'customer.phone' => ['required', 'regex:/^01[0125][0-9]{8}$/'],
-            'customer.governorate' => ['required', 'in:'.implode(',', array_keys(self::GOVERNORATES))],
-            'customer.address' => ['required', 'string', 'min:10', 'max:1000', 'not_regex:/(.)\1{3,}/u'],
-            'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.productId' => ['required', 'string', 'max:64'],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
-        ]);
+        $data = $request->validated();
 
         $result = DB::transaction(function () use ($data) {
+            $store = DB::table('cf_stores')->where('slug', $data['storeSlug'])->first();
+            abort_unless($store, 404);
+            abort_if(
+                $this->storeIsPaused($store),
+                410,
+                'هذا المتجر متوقف مؤقتاً لانتهاء الفترة التجريبية — يرجى تجديد الاشتراك لإعادة التفعيل فوراً',
+            );
+
             $lines = [];
-            $subtotal = 0.0;
+            $subtotalCents = 0;
             foreach ($data['items'] as $item) {
                 $query = DB::table('cf_products')->where('store_slug', $data['storeSlug']);
                 $productId = filter_var($item['productId'], FILTER_VALIDATE_INT);
@@ -330,20 +398,34 @@ class CommerceForgeController extends Controller
                 abort_unless($product, 422, 'أحد المنتجات لم يعد متاحاً.');
                 abort_if($product->stock_qty < $item['quantity'], 422, 'الكمية المطلوبة غير متاحة.');
 
-                $lineTotal = (float) $product->price * (int) $item['quantity'];
-                $subtotal += $lineTotal;
+                $unitPriceCents = (int) round(((float) $product->price) * 100);
+                $lineTotalCents = $unitPriceCents * (int) $item['quantity'];
+                $subtotalCents += $lineTotalCents;
                 $lines[] = [
                     'product_id' => $product->id,
                     'name_ar' => $product->name_ar,
                     'name_en' => $product->name_en,
                     'quantity' => (int) $item['quantity'],
-                    'unit_price' => (float) $product->price,
-                    'line_total' => $lineTotal,
+                    'unit_price' => number_format($unitPriceCents / 100, 2, '.', ''),
+                    'line_total' => number_format($lineTotalCents / 100, 2, '.', ''),
                 ];
                 DB::table('cf_products')->where('id', $product->id)->decrement('stock_qty', (int) $item['quantity']);
             }
 
-            $shippingFee = self::GOVERNORATES[$data['customer']['governorate']];
+            $storeShippingRate = DB::table('cf_store_shipping_rates')
+                ->where('store_slug', $data['storeSlug'])
+                ->where('governorate', $data['customer']['governorate'])
+                ->first();
+            $shippingFee = $storeShippingRate?->fee
+                ?? DB::table('cf_shipping_rates')
+                    ->where('governorate', $data['customer']['governorate'])
+                    ->value('fee');
+            abort_unless(is_numeric($shippingFee), 422, 'منطقة التوصيل غير متاحة.');
+            $shippingRequiresApproval = $storeShippingRate
+                ? (bool) $storeShippingRate->requires_approval
+                : $store->template_slug === 'furniture';
+            $shippingCents = $shippingRequiresApproval ? 0 : (int) round(((float) $shippingFee) * 100);
+            $totalCents = $subtotalCents + $shippingCents;
             $orderNumber = '#IOY'.strtoupper(Str::random(3)).random_int(100, 999);
             $id = DB::table('cf_orders')->insertGetId([
                 'order_number' => $orderNumber,
@@ -353,29 +435,29 @@ class CommerceForgeController extends Controller
                 'governorate' => $data['customer']['governorate'],
                 'address' => trim($data['customer']['address']),
                 'items' => json_encode($lines, JSON_THROW_ON_ERROR),
-                'subtotal' => $subtotal,
-                'shipping_fee' => $shippingFee,
-                'total' => $subtotal + $shippingFee,
+                'subtotal' => number_format($subtotalCents / 100, 2, '.', ''),
+                'shipping_fee' => number_format($shippingCents / 100, 2, '.', ''),
+                'shipping_requires_approval' => $shippingRequiresApproval,
+                'total' => number_format($totalCents / 100, 2, '.', ''),
                 'status' => 'new',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            return ['id' => $id, 'orderNumber' => $orderNumber];
+            return [
+                'id' => $id,
+                'orderNumber' => $orderNumber,
+                'shippingRequiresApproval' => $shippingRequiresApproval,
+                'shippingFee' => number_format($shippingCents / 100, 2, '.', ''),
+            ];
         });
 
         return response()->json($result, 201);
     }
 
-    public function createQuote(Request $request): JsonResponse
+    public function createQuote(CreateQuoteRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'min:4', 'max:120', 'regex:/^[\p{Arabic}a-zA-Z\s]+$/u', 'not_regex:/(.)\1{2,}/u'],
-            'phone' => ['required', 'regex:/^01[0125][0-9]{8}$/'],
-            'email' => ['required', 'email:rfc', 'max:255'],
-            'package_id' => ['nullable', 'in:launch,growth,complete'],
-            'message' => ['nullable', 'string', 'max:2000', 'not_regex:/(.)\1{5,}/u'],
-        ]);
+        $data = $request->validated();
         $id = DB::table('cf_quote_requests')->insertGetId([
             ...$data, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -383,26 +465,40 @@ class CommerceForgeController extends Controller
         return response()->json(['id' => $id, 'received' => true], 201);
     }
 
+    private function storeIsPaused(object $store): bool
+    {
+        return $store->subscription_status !== 'active'
+            && $store->trial_ends_at !== null
+            && now()->greaterThanOrEqualTo($store->trial_ends_at);
+    }
+
+    private function shippingSettingsForStore(object $store): array
+    {
+        $overrides = DB::table('cf_store_shipping_rates')
+            ->where('store_slug', $store->slug)
+            ->get()
+            ->keyBy('governorate');
+        $defaults = DB::table('cf_shipping_rates')->orderBy('governorate')->get();
+
+        return [
+            'requires_approval' => $overrides->isNotEmpty()
+                ? (bool) $overrides->first()->requires_approval
+                : $store->template_slug === 'furniture',
+            'rates' => $defaults->map(fn (object $rate) => [
+                'governorate' => $rate->governorate,
+                'fee' => (float) ($overrides->get($rate->governorate)?->fee ?? $rate->fee),
+            ])->values(),
+        ];
+    }
+
     public function quotes(): JsonResponse
     {
         return response()->json(['data' => DB::table('cf_quote_requests')->orderByDesc('id')->get()]);
     }
 
-    private function validatedProduct(Request $request): array
+    private function validatedProduct(ProductRequest $request): array
     {
-        $data = $request->validate([
-            'external_id' => ['nullable', 'string', 'max:64'],
-            'category_id' => ['nullable', 'integer', 'exists:cf_categories,id'],
-            'name_ar' => ['required', 'string', 'min:2', 'max:180'],
-            'name_en' => ['required', 'string', 'min:2', 'max:180'],
-            'description_ar' => ['nullable', 'string', 'max:2000'],
-            'description_en' => ['nullable', 'string', 'max:2000'],
-            'price' => ['required', 'numeric', 'min:0', 'max:999999999'],
-            'old_price' => ['nullable', 'numeric', 'gt:price', 'max:999999999'],
-            'stock_qty' => ['required', 'integer', 'min:0', 'max:10000000'],
-            'variants' => ['nullable', 'array', 'max:100'],
-            'variants.*' => ['string', 'max:100'],
-        ]);
+        $data = $request->validated();
 
         if (isset($data['external_id'])) {
             $storeSlug = (string) $request->route('slug');

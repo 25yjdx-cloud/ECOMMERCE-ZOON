@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE, getAuthToken, getBackendAuthUrl } from "@/lib/auth";
+import { AUTH_COOKIE, getAuthToken, getBackendAuthUrl, hasSameOrigin } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ message: "Invalid request origin." }, { status: 403 });
+
   const token = await getAuthToken();
 
   if (token) {

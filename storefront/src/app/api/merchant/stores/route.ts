@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { getAuthToken, getBackendAuthUrl } from "@/lib/auth";
+import { getAuthToken, getBackendAuthUrl, hasSameOrigin } from "@/lib/auth";
 
 export async function POST(request: Request) {
+  if (!hasSameOrigin(request)) return NextResponse.json({ message: "Invalid request origin." }, { status: 403 });
+
   const token = await getAuthToken();
   if (!token) return NextResponse.json({ message: "غير مصرح." }, { status: 401 });
 

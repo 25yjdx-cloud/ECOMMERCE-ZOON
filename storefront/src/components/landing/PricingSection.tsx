@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Dictionary } from "@/i18n/dictionaries";
-import { formatEGP } from "@/i18n/format";
 import type { MockLocale } from "@/mock/types";
 import type { AuthUser } from "@/lib/auth";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { formatMarketPrice, MARKET_CONFIG, SAAS_PRICES, SAAS_YEARLY_MONTHLY_PRICES } from "@/config/pricing.config";
+import { MarketSwitcher, useMarket } from "./MarketSwitcher";
 
 type PricingSectionProps = {
   content: Dictionary["pricing"];
@@ -15,6 +17,7 @@ type PricingSectionProps = {
 
 export function PricingSection({ content, locale, user }: PricingSectionProps) {
   const [yearly, setYearly] = useState(false);
+  const [market] = useMarket();
 
   return (
     <section className="content-section page-shell pricing-section" id="pricing" aria-labelledby="pricing-title">
@@ -23,6 +26,7 @@ export function PricingSection({ content, locale, user }: PricingSectionProps) {
         <h2 id="pricing-title">{content.title}</h2>
         <p>{content.description}</p>
       </div>
+      <MarketSwitcher locale={locale} />
       <div className="pricing-controls">
         <div className="pricing-toggle" role="group" aria-label={content.billingPeriod}>
           <button aria-pressed={!yearly} onClick={() => setYearly(false)} type="button">{content.monthly}</button>
@@ -32,7 +36,11 @@ export function PricingSection({ content, locale, user }: PricingSectionProps) {
       </div>
       <div className="pricing-grid">
         {content.plans.map((plan) => {
-          const price = yearly ? plan.yearly : plan.monthly;
+          const marketPrices = Object.entries(SAAS_PRICES).find(([slug]) => slug === plan.slug)?.[1];
+          const monthlyPrice = marketPrices?.[market] ?? plan.monthly;
+          const yearlyPrices = Object.entries(SAAS_YEARLY_MONTHLY_PRICES).find(([slug]) => slug === plan.slug)?.[1];
+          const yearlyPrice = yearlyPrices?.[market] ?? plan.yearly;
+          const price = yearly ? yearlyPrice : monthlyPrice;
           const isPopular = plan.slug === "advanced";
           const href = user?.role === "merchant"
             ? `/dashboard/my-store?lang=${locale}&plan=${encodeURIComponent(plan.slug)}`
@@ -42,12 +50,14 @@ export function PricingSection({ content, locale, user }: PricingSectionProps) {
 
           return (
             <article className={`pricing-card${isPopular ? " pricing-card-popular" : ""}`} key={plan.slug}>
-              {isPopular && <span className="pricing-popular-badge">{content.popular}</span>}
+              {isPopular && <span className="pricing-popular-badge"><BrandLogo size={20} variant="mark" />{content.popular}</span>}
               <h3>{plan.name}</h3>
               <p>{plan.description}</p>
               <div className="pricing-amount">
-                <strong>{price === 0 ? content.free : formatEGP(price, locale)}</strong>
-                <span>{price === 0 ? content.forever : yearly ? content.yearlyRate : content.monthlyRate}</span>
+                <strong>{formatMarketPrice(price, market, locale)}</strong>
+                <span>{price === 0
+                  ? locale === "ar" ? "لمدة 14 يوماً" : "for 14 days"
+                  : yearly ? content.yearlyRate : content.monthlyRate}</span>
               </div>
               <ul>
                 {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
@@ -62,6 +72,7 @@ export function PricingSection({ content, locale, user }: PricingSectionProps) {
           );
         })}
       </div>
+      <p className="market-payment-copy">{MARKET_CONFIG[market].paymentShipping[locale]}</p>
     </section>
   );
 }

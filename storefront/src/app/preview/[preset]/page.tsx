@@ -6,6 +6,7 @@ import { getLocale, type QueryValues } from "@/i18n/locale";
 import { getPreset, PRESET_ROUTE_IDS } from "@/lib/presets";
 import type { MockLocale } from "@/mock/types";
 import { getAuthUser } from "@/lib/auth";
+import { PreviewStageSwitcher } from "@/components/storefront/PreviewStageSwitcher";
 
 type PreviewPageProps = {
   params: Promise<{ preset: string }>;
@@ -30,12 +31,15 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   const locale: MockLocale = getLocale(query.lang);
   const user = await getAuthUser();
   return (
-    <StorePreview
-      dictionary={getDictionary(locale)}
-      locale={locale}
-      preset={preset}
-      query={query}
-      user={user}
-    />
+    <>
+      <PreviewStageSwitcher current="starter" locale={locale} slug={preset.id} />
+      <StorePreview
+        dictionary={getDictionary(locale)}
+        locale={locale}
+        preset={preset}
+        query={query}
+        user={user}
+      />
+    </>
   );
 }

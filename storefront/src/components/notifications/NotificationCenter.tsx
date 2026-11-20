@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { MockLocale } from "@/mock/types";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 type Notification = { id: string; title: string; body: string; created_at: string };
 
@@ -67,7 +68,10 @@ export function NotificationCenter({ locale }: { locale: MockLocale }) {
   return (
     <section className="notification-page-panel" dir={isArabic ? "rtl" : "ltr"}>
       <div className="notification-page-heading">
-        <h1>{isArabic ? "مركز الإشعارات" : "Notifications"}</h1>
+        <div className="notification-brand-heading">
+          <BrandLogo size={36} variant="mark" />
+          <h1>{isArabic ? "مركز الإشعارات" : "Notifications"}</h1>
+        </div>
         <button className="button-link secondary" disabled={items.every(({ id }) => readIds.includes(id))} onClick={markAllRead} type="button">
           {isArabic ? "تحديد الكل كمقروء" : "Mark all as read"}
         </button>
@@ -89,7 +93,7 @@ export function NotificationCenter({ locale }: { locale: MockLocale }) {
       <ul className="notification-page-list">
         {visibleItems.map((item) => (
           <li className={readIds.includes(item.id) ? "is-read" : "is-unread"} key={item.id}>
-            <span className="notification-unread-mark" />
+            <span className="notification-unread-mark"><BrandLogo size={18} variant="mark" /></span>
             <div><strong>{item.title}</strong><p>{item.body}</p></div>
           </li>
         ))}

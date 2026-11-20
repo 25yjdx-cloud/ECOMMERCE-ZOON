@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { getBackendAuthUrl } from "@/lib/auth";
+import { getBackendAuthUrl, hasSameOrigin } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const response = await fetch(getBackendAuthUrl("api/v1/quote-requests"), {
+  if (!hasSameOrigin(request)) return NextResponse.json({ message: "Invalid request origin." }, { status: 403 });
+
+  const response = await fetch(getBackendAuthUrl("api/v1/leads"), {
     method: "POST",
     headers: {
       Accept: "application/json",

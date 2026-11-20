@@ -16,9 +16,16 @@ import { PreviewSwitcher } from "./PreviewSwitcher";
 import { PreviewTopbar } from "./PreviewTopbar";
 import { StoreProductCard } from "./StoreProductCard";
 import { templateModules } from "@/templates";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 type StoreConfigResponse = {
   data: {
+    paused: boolean;
+    trial_ends_at: string | null;
+    shipping?: {
+      requires_approval: boolean;
+      rates: Array<{ governorate: string; fee: number }>;
+    };
     config: {
       store_name?: string;
       logo_url?: string | null;
@@ -64,7 +71,9 @@ export function StorePreview({
   const [category, setCategory] = useState<string>();
   const [cartOpen, setCartOpen] = useState(false);
   const [remoteConfig, setRemoteConfig] = useState<StoreConfigResponse["data"]["config"]>();
+  const [remoteShipping, setRemoteShipping] = useState<StoreConfigResponse["data"]["shipping"]>();
   const [remoteProducts, setRemoteProducts] = useState<StoreProductsResponse["data"]>();
+  const [storePaused, setStorePaused] = useState(false);
   const { itemCount } = useCart();
   const data = mockData[preset.id];
   const template = templateModules[preset.id];
@@ -74,28 +83,33 @@ export function StorePreview({
   const storeSlug = requestedStore || preset.id;
   useEffect(() => {
     let active = true;
+    setRemoteShipping(undefined);
     void Promise.all([
       fetch(`/api/stores/${encodeURIComponent(storeSlug)}/config`, { cache: "no-store" }),
       fetch(`/api/stores/${encodeURIComponent(storeSlug)}/products`, { cache: "no-store" }),
     ]).then(async ([configResponse, productsResponse]) => {
-      if (!configResponse.ok || !productsResponse.ok) return;
-      const [configResult, productsResult] = await Promise.all([
-        configResponse.json() as Promise<StoreConfigResponse>,
-        productsResponse.json() as Promise<StoreProductsResponse>,
-      ]);
+      if (!configResponse.ok) return;
+      const configResult = await configResponse.json() as StoreConfigResponse;
+      const productsResult = productsResponse.ok
+        ? await productsResponse.json() as StoreProductsResponse
+        : undefined;
       if (active) {
         setRemoteConfig(configResult.data.config);
-        setRemoteProducts(productsResult.data);
+        setRemoteShipping(configResult.data.shipping);
+        setStorePaused(configResult.data.paused);
+        if (productsResult) setRemoteProducts(productsResult.data);
       }
     }).catch(() => {
       if (active) {
         setRemoteConfig(undefined);
         setRemoteProducts(undefined);
+        setRemoteShipping(undefined);
       }
     });
 
     return () => { active = false; };
   }, [preset.id, storeSlug]);
+
   const productsData = remoteProducts
     ? remoteProducts.map((product) => ({
         id: product.external_id ?? String(product.id),
@@ -122,6 +136,18 @@ export function StorePreview({
       return matchesCategory && matchesSearch;
     });
   }, [category, locale, productsData, search]);
+
+  if (storePaused) {
+    return (
+      <main className="store-paused-screen" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
+        <LocaleDocumentAttributes locale={locale} />
+        <BrandLogo size={72} variant="full" />
+        <h1>{locale === "ar"
+          ? "هذا المتجر متوقف مؤقتاً لانتهاء الفترة التجريبية — يرجى تجديد الاشتراك لإعادة التفعيل فوراً"
+          : "This store is temporarily paused because its trial ended. Renew the subscription to reactivate it."}</h1>
+      </main>
+    );
+  }
 
   return (
     <div
@@ -217,7 +243,17 @@ export function StorePreview({
       <footer className="page-shell site-footer">
         <span>CommerceForge</span>
       </footer>
-      <CartDrawer dictionary={dictionary} locale={locale} onClose={() => setCartOpen(false)} open={cartOpen} />
+      <CartDrawer
+        dictionary={dictionary}
+        locale={locale}
+        onClose={() => setCartOpen(false)}
+        open={cartOpen}
+        previewMode
+        shippingRates={remoteShipping
+          ? Object.fromEntries(remoteShipping.rates.map((rate) => [rate.governorate, rate.fee]))
+          : undefined}
+        shippingRequiresApproval={remoteShipping?.requires_approval ?? preset.id === "furniture"}
+      />
       <PreviewSwitcher
         activePreset={preset}
         dictionary={dictionary}

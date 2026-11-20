@@ -38,18 +38,37 @@ services:
       SESSION_DRIVER: file
       CACHE_STORE: file
       QUEUE_CONNECTION: sync
+      PHP_CLI_SERVER_WORKERS: "4"
       STOREFRONT_URL: http://localhost:3006
       STOREFRONT_ORIGIN: http://localhost:3006
       COMMERCEFORGE_PRESET_REGISTRY: /commerceforge-presets.json
     volumes:
-      - ./bagisto:/workspace
+      - ./bagisto:/workspace:cached
+      - bagisto-vendor:/workspace/vendor
       - ../config/templates/presets.json:/commerceforge-presets.json:ro
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
-    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+    command:
+      - sh
+      - -c
+      - |
+        if [ ! -f vendor/autoload.php ]; then
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+        fi
+        cd public
+        exec php \
+          -d opcache.enable=1 \
+          -d opcache.enable_cli=1 \
+          -d opcache.memory_consumption=256 \
+          -d opcache.max_accelerated_files=20000 \
+          -d opcache.validate_timestamps=1 \
+          -d opcache.revalidate_freq=10 \
+          -S 0.0.0.0:8000 \
+          /workspace/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
 
 volumes:
+  bagisto-vendor:
   commerceforge-mysql:

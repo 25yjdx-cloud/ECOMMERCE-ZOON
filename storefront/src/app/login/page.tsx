@@ -54,8 +54,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <h1>{isArabic ? "أهلاً بك" : "Welcome back"}</h1>
           <p>
             {isArabic
-              ? "سجّل الدخول للمتابعة. صلاحيات إدارة المنصة محصورة بالبريد المحدد في إعدادات المالك."
-              : "Sign in to continue. Platform administration is restricted to the configured owner email."}
+              ? "سجّل دخولك أو أنشئ حسابك مجاناً وابدأ تجربتك لمدة 14 يوم"
+              : "Sign in or create your account for free and start your 14-day trial."}
           </p>
           {notice === "owner-only" && (
             <p className="auth-notice" role="status">
@@ -94,6 +94,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
                     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
                     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+                    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+                    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
                   }
                 : null
             }

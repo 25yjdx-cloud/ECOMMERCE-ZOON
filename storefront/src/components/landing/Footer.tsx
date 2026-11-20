@@ -26,15 +26,14 @@ export function Footer({ locale }: { locale: MockLocale }) {
             {isArabic ? "ابدأ مجاناً ←" : "Start for free →"}
           </Link>
           <a className="footer-whatsapp-button" href="https://wa.me/201145335168" rel="noreferrer" target="_blank">
-            {isArabic ? "واتساب: 01145335168" : "WhatsApp: 01145335168"}
+            {isArabic ? "تواصل عبر واتساب" : "Contact us on WhatsApp"}
           </a>
         </div>
       </div>
       <div className="platform-footer-grid">
         <section className="footer-brand-column">
           <Link className="footer-brand" href={`/?lang=${locale}`}>
-            <span aria-hidden="true" className="brand-symbol">C</span>
-            <strong>CommerceForge</strong>
+            CommerceForge
           </Link>
           <p>
             {isArabic
@@ -60,13 +59,13 @@ export function Footer({ locale }: { locale: MockLocale }) {
             <li><Link href={`/#pricing`}>{isArabic ? "الباقات والأسعار" : "Plans & pricing"}</Link></li>
             <li><Link href={`/account?lang=${locale}`}>{isArabic ? "إعدادات الحساب" : "Account settings"}</Link></li>
             <li><Link href={`/notifications?lang=${locale}`}>{isArabic ? "الإشعارات" : "Notifications"}</Link></li>
+            <li><Link href={`/track-order?lang=${locale}`}>{isArabic ? "تتبع الطلب" : "Track an order"}</Link></li>
           </ul>
         </section>
         <section>
           <h3>{isArabic ? "تواصل مباشر" : "Direct contact"}</h3>
           <ul>
             <li><a href="https://wa.me/201145335168" rel="noreferrer" target="_blank">{isArabic ? "واتساب" : "WhatsApp"}</a></li>
-            <li><a dir="ltr" href="tel:+201145335168">01145335168</a></li>
             <li><Link href="/#contact">{isArabic ? "اطلب عرض سعر" : "Request a quote"}</Link></li>
           </ul>
         </section>

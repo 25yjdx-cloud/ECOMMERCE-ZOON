@@ -10,6 +10,9 @@ export type AuthUser = {
   email: string;
   role: AuthRole;
   storeSlug: string | null;
+  whatsappPhone?: string | null;
+  market?: "EG" | "SA" | null;
+  twoFactorEnabled?: boolean;
 };
 
 export function isAuthUser(value: unknown): value is AuthUser {
@@ -21,7 +24,10 @@ export function isAuthUser(value: unknown): value is AuthUser {
     typeof user.name === "string" &&
     typeof user.email === "string" &&
     (user.role === "super_admin" || user.role === "merchant") &&
-    (user.storeSlug === null || typeof user.storeSlug === "string")
+    (user.storeSlug === null || typeof user.storeSlug === "string") &&
+    (user.whatsappPhone === undefined || user.whatsappPhone === null || typeof user.whatsappPhone === "string") &&
+    (user.market === undefined || user.market === null || user.market === "EG" || user.market === "SA") &&
+    (user.twoFactorEnabled === undefined || typeof user.twoFactorEnabled === "boolean")
   );
 }
 
@@ -34,6 +40,18 @@ export function getBackendAuthUrl(path: string): URL {
 
 export async function getAuthToken(): Promise<string | null> {
   return (await cookies()).get(AUTH_COOKIE)?.value ?? null;
+}
+
+export function hasSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    return false;
+  }
 }
 
 export async function getAuthUser(): Promise<AuthUser | null> {

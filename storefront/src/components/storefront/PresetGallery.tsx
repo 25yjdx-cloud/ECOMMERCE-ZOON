@@ -9,6 +9,7 @@ import { ShowcasePresetCard } from "./ShowcasePresetCard";
 import type { AuthUser } from "@/lib/auth";
 
 type Filter = "all" | "featured" | "readySoon";
+const galleryFeaturedIds = new Set(["classic", "fashion", "furniture"]);
 
 export function PresetGallery({
   presets,
@@ -30,7 +31,7 @@ export function PresetGallery({
   const visiblePresets = useMemo(
     () =>
       presets.filter((preset) => {
-        if (filter === "featured") return preset.featuredOnHome;
+        if (filter === "featured") return galleryFeaturedIds.has(preset.id);
         if (filter === "readySoon") return preset.status === "planned";
         return true;
       }),
@@ -40,6 +41,10 @@ export function PresetGallery({
 
   return (
     <>
+      <div className="gallery-brand-divider" aria-hidden="true">
+        <span />
+        <span />
+      </div>
       <div className="gallery-filters" role="group" aria-label={dictionary.gallery.title}>
         {filters.map((item) => (
           <button
@@ -61,7 +66,12 @@ export function PresetGallery({
             <p>{dictionary.gallery.comingSoonDescription}</p>
           </div>
           <ul>
-            {dictionary.gallery.comingSoonTemplates.map((name) => <li key={name}>{name}</li>)}
+            {dictionary.gallery.comingSoonTemplates.map((name) => (
+              <li key={name}>
+                <span className="coming-soon-card-badge">{locale === "ar" ? "قريباً" : "Coming soon"}</span>
+                <strong>{name}</strong>
+              </li>
+            ))}
           </ul>
         </section>
       ) : (

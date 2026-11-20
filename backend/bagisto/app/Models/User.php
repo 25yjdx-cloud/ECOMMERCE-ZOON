@@ -20,12 +20,16 @@ class User extends Authenticatable
         'role',
         'store_slug',
         'google_id',
+        'two_factor_secret',
+        'whatsapp_phone',
+        'market',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
         'google_id',
+        'two_factor_secret',
     ];
 
     protected function casts(): array
@@ -33,6 +37,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
+            'two_factor_enabled' => 'boolean',
+            'two_factor_secret' => 'encrypted',
         ];
     }
 }

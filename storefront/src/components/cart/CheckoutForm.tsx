@@ -10,10 +10,12 @@ import {
   type GovernorateId,
 } from "@/features/checkout/validation";
 import { getOrderWhatsAppUrl } from "@/features/checkout/whatsapp";
+import { submitCheckoutOrder } from "@/features/checkout/submit";
 import { getDictionary } from "@/i18n/dictionaries";
 import { formatEGP } from "@/i18n/format";
 import type { MockLocale } from "@/mock/types";
 import { useCart } from "./CartProvider";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 type CheckoutFormProps = {
   locale: MockLocale;
@@ -37,11 +39,16 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof CheckoutDetails, boolean>>>({});
   const [orderNumber, setOrderNumber] = useState<string>();
+  const [demoOrder, setDemoOrder] = useState(false);
+  const [receiptCustomer, setReceiptCustomer] = useState<CheckoutDetails>();
+  const [shippingRequiresApproval, setShippingRequiresApproval] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const dictionary = getDictionary(locale);
   const checkout = dictionary.checkout;
-  const shippingFee = getShippingFee(details.governorate);
+  const shippingRequiresAgreement = items.some(({ product }) => product.preset === "furniture")
+    || shippingRequiresApproval;
+  const shippingFee = shippingRequiresAgreement ? 0 : getShippingFee(details.governorate);
   const grandTotal = subtotal + shippingFee;
 
   function updateField<Field extends keyof CheckoutDetails>(
@@ -77,44 +84,23 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/checkout/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeSlug: items[0]?.product.storeSlug ?? items[0]?.product.preset,
-          customer: details,
-          items: items.map(({ product, quantity }) => ({
-            productId: product.id,
-            quantity,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        setSubmitError(checkout.connectionError);
-        return;
-      }
-
-      const result: unknown = await response.json();
-      if (
-        typeof result !== "object" ||
-        result === null ||
-        !("orderNumber" in result) ||
-        typeof result.orderNumber !== "string"
-      ) {
-        setSubmitError(checkout.connectionError);
-        return;
-      }
-
+      const result = await submitCheckoutOrder({
+        storeSlug: items[0]?.product.storeSlug ?? items[0]?.product.preset ?? "",
+        customer: details,
+        items: items.map(({ product, quantity }) => ({
+          productId: product.id,
+          quantity,
+        })),
+      }, true);
       setOrderNumber(result.orderNumber);
+      setDemoOrder(result.demo);
+      setShippingRequiresApproval(
+        result.shippingRequiresApproval || items.some(({ product }) => product.preset === "furniture"),
+      );
+      setReceiptCustomer(details);
       clear();
     } catch (error) {
-      if (error instanceof TypeError) {
-        setSubmitError(checkout.connectionError);
-        return;
-      }
-
-      throw error;
+      setSubmitError(error instanceof Error ? error.message : checkout.connectionError);
     } finally {
       setSubmitting(false);
     }
@@ -123,10 +109,26 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
   if (orderNumber) {
     return (
       <section className="order-confirmation" role="status">
+        <BrandLogo size={56} variant="full" />
         <span className="eyebrow">{checkout.successTitle}</span>
+        {demoOrder && <span className="demo-order-badge">{isArabic ? "طلب تجريبي" : "Demo order"}</span>}
         <h1>{checkout.successTitle}</h1>
         <p>{checkout.successText}</p>
         <strong>{orderNumber}</strong>
+        {receiptCustomer && (
+          <div>
+            <p>{isArabic ? "العميل" : "Customer"}: {receiptCustomer.name}</p>
+            <p dir="ltr">{receiptCustomer.phone}</p>
+            <p>{EGYPTIAN_GOVERNORATES.find(({ id }) => id === receiptCustomer.governorate)?.name[locale]}</p>
+          </div>
+        )}
+        {shippingRequiresAgreement && (
+          <p className="shipping-agreement-note">
+            {isArabic
+              ? "تكلفة الشحن والنقل تُحدّد وتُعتمد مع شركة الشحن وموافقة العميل قبل التأكيد النهائي"
+              : "Shipping and transport costs are agreed with the carrier and customer before final confirmation."}
+          </p>
+        )}
         <a
           className="button-link"
           href={getOrderWhatsAppUrl(orderNumber, checkout.whatsappMessage)}
@@ -142,6 +144,7 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
   if (items.length === 0) {
     return (
       <section className="empty-state">
+        <BrandLogo size={44} variant="mark" />
         <h1>{isArabic ? "سلة التسوق فارغة" : "Your cart is empty"}</h1>
         <p>{isArabic ? "أضف منتجًا قبل تجربة إتمام الطلب." : "Add a product before trying the checkout."}</p>
       </section>
@@ -193,7 +196,9 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
           <option value="">{checkout.selectGovernorate}</option>
           {EGYPTIAN_GOVERNORATES.map((governorate) => (
             <option key={governorate.id} value={governorate.id}>
-              {governorate.name[locale]} — {formatEGP(governorate.shippingFee, locale)}
+              {governorate.name[locale]} — {items.some(({ product }) => product.preset === "furniture")
+                ? (isArabic ? "يُعتمد لاحقاً" : "Agreed later")
+                : formatEGP(governorate.shippingFee, locale)}
             </option>
           ))}
         </select>
@@ -223,6 +228,13 @@ export function CheckoutForm({ locale }: CheckoutFormProps) {
           <span>{checkout.shipping}</span>
           <strong>{details.governorate ? formatEGP(shippingFee, locale) : checkout.shippingNotSelected}</strong>
         </div>
+        {items.some(({ product }) => product.preset === "furniture") && (
+          <p className="shipping-agreement-note">
+            {isArabic
+              ? "تكلفة الشحن والنقل تُحدّد وتُعتمد مع شركة الشحن وموافقة العميل قبل التأكيد النهائي"
+              : "Shipping and transport costs are agreed with the carrier and customer before final confirmation."}
+          </p>
+        )}
         <div className="checkout-grand-total">
           <span>{checkout.grandTotal}</span>
           <strong>{formatEGP(grandTotal, locale)}</strong>

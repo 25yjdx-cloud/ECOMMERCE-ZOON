@@ -7,6 +7,7 @@ import type { AuthUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { BackendConnectionStatus } from "./BackendConnectionStatus";
 import { PlatformUtilities } from "@/components/theme/PlatformUtilities";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export function PreviewTopbar({
   dictionary,
@@ -29,6 +30,9 @@ export function PreviewTopbar({
   return (
     <nav aria-label={dictionary.navigation.allPresets} className="preview-topbar">
       <div className="preview-topbar-links">
+        <Link aria-label="CommerceForge" className="preview-brand-link" href={createLocaleHref("/", query, locale)}>
+          <BrandLogo size={30} variant="mark" />
+        </Link>
         <Link href={createLocaleHref("/", query, locale)}>{dictionary.navigation.backHome}</Link>
         <Link href={createLocaleHref("/templates", query, locale)}>{dictionary.navigation.allPresets}</Link>
         <Link href={createLocaleHref("/pricing", query, locale)}>{dictionary.navigation.pricing}</Link>

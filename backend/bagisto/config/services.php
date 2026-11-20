@@ -67,7 +67,7 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
     'firebase' => [
-        'api_key' => env('NEXT_PUBLIC_FIREBASE_API_KEY'),
+        'project_id' => env('FIREBASE_PROJECT_ID', 'commerce-forge-c3d86'),
     ],
 
     'linkedin-openid' => [
@@ -82,9 +82,18 @@ return [
         'redirect' => env('GITHUB_CALLBACK_URL'),
     ],
     'ai' => [
-        'provider' => env('AI_PROVIDER', 'local'),
-        'api_key' => env('AI_API_KEY'),
+        'provider' => env('AI_PROVIDER') === 'off'
+            ? 'local'
+            : (in_array(env('AI_PROVIDER'), ['openai', 'gemini'], true)
+                ? env('AI_PROVIDER')
+                : (env('GEMINI_API_KEY') ? 'gemini' : (env('OPENAI_API_KEY') || env('AI_API_KEY') ? 'openai' : 'local'))),
+        'api_key' => env('OPENAI_API_KEY', env('AI_API_KEY')),
         'base_url' => env('AI_BASE_URL', 'https://api.openai.com/v1'),
-        'model' => env('AI_MODEL', 'gpt-4o-mini'),
+        'model' => env('OPENAI_MODEL', env('AI_MODEL', 'gpt-4o-mini')),
+        'gemini_api_key' => env('GEMINI_API_KEY'),
+        'gemini_model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+    ],
+    'commerceforge' => [
+        'payment_webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
     ],
 ];

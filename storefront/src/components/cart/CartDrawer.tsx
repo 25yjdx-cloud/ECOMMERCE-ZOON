@@ -13,6 +13,7 @@ import {
   type GovernorateId,
 } from "@/features/checkout/validation";
 import { getOrderWhatsAppUrl } from "@/features/checkout/whatsapp";
+import { submitCheckoutOrder } from "@/features/checkout/submit";
 import type { MockLocale } from "@/mock/types";
 
 const emptyDetails: CheckoutDetails = { name: "", phone: "", governorate: "", address: "" };
@@ -26,11 +27,17 @@ export function CartDrawer({
   onClose,
   locale,
   dictionary,
+  previewMode = false,
+  shippingRequiresApproval = false,
+  shippingRates,
 }: {
   open: boolean;
   onClose: () => void;
   locale: MockLocale;
   dictionary: Dictionary;
+  previewMode?: boolean;
+  shippingRequiresApproval?: boolean;
+  shippingRates?: Record<string, number>;
 }) {
   const { items, subtotal, setQuantity, remove, clear } = useCart();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -38,12 +45,16 @@ export function CartDrawer({
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof CheckoutDetails, boolean>>>({});
   const [orderNumber, setOrderNumber] = useState<string>();
+  const [demoOrder, setDemoOrder] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [receiptCustomer, setReceiptCustomer] = useState<CheckoutDetails>();
   const store = dictionary.store;
   const checkout = dictionary.checkout;
   const isArabic = locale === "ar";
-  const shippingFee = getShippingFee(details.governorate);
+  const selectedShippingFee = shippingRates?.[details.governorate]
+    ?? getShippingFee(details.governorate);
+  const shippingFee = shippingRequiresApproval ? 0 : selectedShippingFee;
   const grandTotal = subtotal + shippingFee;
 
   function updateField<Field extends keyof CheckoutDetails>(
@@ -79,48 +90,31 @@ export function CartDrawer({
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/checkout/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeSlug: items[0]?.product.storeSlug ?? items[0]?.product.preset,
-          customer: details,
-          items: items.map(({ product, quantity }) => ({
-            productId: product.id,
-            quantity,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        setSubmitError(checkout.connectionError);
-        return;
-      }
-
-      const result: unknown = await response.json();
-      if (
-        typeof result !== "object" ||
-        result === null ||
-        !("orderNumber" in result) ||
-        typeof result.orderNumber !== "string"
-      ) {
-        setSubmitError(checkout.connectionError);
-        return;
-      }
-
+      const result = await submitCheckoutOrder({
+        storeSlug: items[0]?.product.storeSlug ?? items[0]?.product.preset ?? "",
+        customer: details,
+        items: items.map(({ product, quantity }) => ({
+          productId: product.id,
+          quantity,
+        })),
+      }, previewMode);
       setOrderNumber(result.orderNumber);
+      setDemoOrder(result.demo);
+      setReceiptCustomer(details);
       clear();
     } catch (error) {
-      if (error instanceof TypeError) {
-        setSubmitError(checkout.connectionError);
-        return;
-      }
-
-      throw error;
+      setSubmitError(error instanceof Error ? error.message : checkout.connectionError);
     } finally {
       setSubmitting(false);
     }
   }
+
+  const shippingAgreement = isArabic
+    ? "يُعتمد مع شركة الشحن وموافقة العميل أولاً"
+    : "Confirmed with the carrier and customer first";
+  const shippingNote = isArabic
+    ? "تكلفة الشحن والنقل تُحدّد وتُعتمد مع شركة الشحن وموافقة العميل قبل التأكيد النهائي"
+    : "Shipping and transport costs are agreed with the carrier and customer before final confirmation.";
 
   if (!open) return null;
 
@@ -146,10 +140,19 @@ export function CartDrawer({
           </button>
         </div>
         {orderNumber ? (
-          <div className="cart-drawer-lines" role="status">
+          <div className="cart-drawer-content cart-order-receipt" role="status">
+            {demoOrder && <span className="demo-order-badge">{isArabic ? "طلب تجريبي" : "Demo order"}</span>}
             <h3>{checkout.successTitle}</h3>
             <p>{checkout.successText}</p>
             <strong>{orderNumber}</strong>
+            {receiptCustomer && (
+              <div>
+                <p>{isArabic ? "العميل" : "Customer"}: {receiptCustomer.name}</p>
+                <p dir="ltr">{receiptCustomer.phone}</p>
+                <p>{EGYPTIAN_GOVERNORATES.find(({ id }) => id === receiptCustomer.governorate)?.name[locale]}</p>
+              </div>
+            )}
+            {shippingRequiresApproval && <p className="shipping-agreement-note">{shippingNote}</p>}
             <a
               className="button-link"
               href={getOrderWhatsAppUrl(orderNumber, checkout.whatsappMessage)}
@@ -161,61 +164,43 @@ export function CartDrawer({
           </div>
         ) : (
           <>
-            <div className="cart-drawer-lines">
-              {items.length === 0 ? (
-                <p>{store.emptyCart}</p>
-              ) : (
-                items.map(({ product, quantity }) => (
-                  <article className="cart-line" key={product.id}>
-                    <span aria-hidden="true" className="cart-line-art">{product.name[locale].slice(0, 1)}</span>
-                    <div className="cart-line-details">
-                      <h3>{product.name[locale]}</h3>
-                      <strong>{formatEGP(product.price, locale)}</strong>
-                    </div>
-                    <label className="quantity-control">
-                      <span>{store.quantity}</span>
-                      <input
-                        min="1"
-                        step="1"
-                        inputMode="numeric"
-                        onChange={(event) => {
-                          const value = Number(event.currentTarget.value);
-                          if (Number.isInteger(value) && value >= 1) {
-                            setQuantity(product.id, value);
-                          }
-                        }}
-                        type="number"
-                        value={quantity}
-                      />
-                    </label>
-                    <button className="text-button" onClick={() => remove(product.id)} type="button">
-                      {store.remove}
-                    </button>
-                  </article>
-                ))
-              )}
-            </div>
-            <div className="cart-drawer-foot">
-              <div className="checkout-summary">
-                <div>
-                  <span>{checkout.subtotal}</span>
-                  <strong>{formatEGP(subtotal, locale)}</strong>
-                </div>
-                <div>
-                  <span>{checkout.shipping}</span>
-                  <strong>
-                    {details.governorate
-                      ? formatEGP(shippingFee, locale)
-                      : checkout.shippingNotSelected}
-                  </strong>
-                </div>
-                <div className="checkout-grand-total">
-                  <span>{checkout.grandTotal}</span>
-                  <strong>{formatEGP(grandTotal, locale)}</strong>
-                </div>
+            <div className="cart-drawer-content">
+              <div className="cart-drawer-lines">
+                {items.length === 0 ? (
+                  <p>{store.emptyCart}</p>
+                ) : (
+                  items.map(({ product, quantity }) => (
+                    <article className="cart-line" key={product.id}>
+                      <span aria-hidden="true" className="cart-line-art">{product.name[locale].slice(0, 1)}</span>
+                      <div className="cart-line-details">
+                        <h3>{product.name[locale]}</h3>
+                        <strong>{formatEGP(product.price, locale)}</strong>
+                      </div>
+                      <label className="quantity-control">
+                        <span>{store.quantity}</span>
+                        <input
+                          min="1"
+                          step="1"
+                          inputMode="numeric"
+                          onChange={(event) => {
+                            const value = Number(event.currentTarget.value);
+                            if (Number.isInteger(value) && value >= 1) {
+                              setQuantity(product.id, value);
+                            }
+                          }}
+                          type="number"
+                          value={quantity}
+                        />
+                      </label>
+                      <button className="text-button" onClick={() => remove(product.id)} type="button">
+                        {store.remove}
+                      </button>
+                    </article>
+                  ))
+                )}
               </div>
-              {checkoutOpen && items.length > 0 ? (
-                <form className="checkout-form" onSubmit={submitCheckout} noValidate>
+              {checkoutOpen && items.length > 0 && (
+                <form className="checkout-form" id="cart-checkout-form" onSubmit={submitCheckout} noValidate>
                   <label>
                     <span>{checkout.name}</span>
                     <input
@@ -259,7 +244,9 @@ export function CartDrawer({
                       <option value="">{checkout.selectGovernorate}</option>
                       {EGYPTIAN_GOVERNORATES.map((governorate) => (
                         <option key={governorate.id} value={governorate.id}>
-                          {governorate.name[locale]} — {formatEGP(governorate.shippingFee, locale)}
+                          {governorate.name[locale]} — {shippingRequiresApproval
+                            ? (isArabic ? "يُعتمد لاحقاً" : "Agreed later")
+                            : formatEGP(shippingRates?.[governorate.id] ?? governorate.shippingFee, locale)}
                         </option>
                       ))}
                     </select>
@@ -278,17 +265,40 @@ export function CartDrawer({
                     />
                     {touched.address && errors.address && <small className="field-error">{checkout.addressError}</small>}
                   </label>
-                  <p>{checkout.payment}: {checkout.cashOnDelivery}</p>
+                  {shippingRequiresApproval && <p className="shipping-agreement-note">{shippingNote}</p>}
                   {submitError && <p className="checkout-submit-error" role="alert">{submitError}</p>}
-                  <button className="button-link" disabled={submitting} type="submit">
-                    {submitting ? (
-                      <>
-                        <span aria-hidden="true" className="checkout-spinner" />
-                        {checkout.submitting}
-                      </>
-                    ) : checkout.submit}
-                  </button>
                 </form>
+              )}
+            </div>
+            <div className="cart-drawer-foot">
+              <div className="checkout-summary">
+                <div>
+                  <span>{checkout.subtotal}</span>
+                  <strong>{formatEGP(subtotal, locale)}</strong>
+                </div>
+                <div>
+                  <span>{checkout.shipping}</span>
+                  <strong>
+                    {details.governorate
+                      ? shippingRequiresApproval ? formatEGP(0, locale) : formatEGP(shippingFee, locale)
+                      : checkout.shippingNotSelected}
+                  </strong>
+                </div>
+                <div className="checkout-grand-total">
+                  <span>{checkout.grandTotal}</span>
+                  <strong>{formatEGP(grandTotal, locale)}</strong>
+                </div>
+              </div>
+              <p className="cart-payment-badge">{checkout.payment}: {checkout.cashOnDelivery}</p>
+              {checkoutOpen && items.length > 0 ? (
+                <button className="button-link" disabled={submitting} form="cart-checkout-form" type="submit">
+                  {submitting ? (
+                    <>
+                      <span aria-hidden="true" className="checkout-spinner" />
+                      {checkout.submitting}
+                    </>
+                  ) : checkout.submit}
+                </button>
               ) : (
                 <button
                   className="button-link"

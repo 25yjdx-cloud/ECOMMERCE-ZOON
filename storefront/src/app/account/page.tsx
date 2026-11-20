@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountThemeToggle } from "@/components/theme/AccountThemeToggle";
+import { TwoFactorSettings } from "@/components/auth/TwoFactorSettings";
 import { Footer } from "@/components/landing/Footer";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocumentAttributes";
 import { getDictionary } from "@/i18n/dictionaries";
 import { getLocale, type QueryValues } from "@/i18n/locale";
 import { getAuthUser } from "@/lib/auth";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export const metadata: Metadata = {
   title: "إعدادات الحساب | CommerceForge",
@@ -27,10 +29,16 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         <header className="account-page-heading">
           <span className="eyebrow">{isArabic ? "حساب CommerceForge" : "CommerceForge account"}</span>
           <h1>{isArabic ? "إعدادات الحساب" : "Account settings"}</h1>
-          <p>{isArabic ? "تحكم في حسابك واختر الطريقة الأنسب لإطلاق متجرك." : "Manage your account and choose how to launch your store."}</p>
+          <p>
+            {isArabic
+              ? "70% من متجرك ينطلق فوراً باختيار القالب والهوية والمنتجات، ثم يراجع المطور التفاصيل ويضبط الدومين والاستضافة خلال 24–48 ساعة."
+              : "Launch 70% of your store immediately with a template, brand identity, and products. A developer then reviews the details and configures the domain and hosting within 24–48 hours."}
+          </p>
         </header>
         <section className="account-profile-card">
+          <BrandLogo className="account-brand-watermark" size={120} variant="watermark" />
           <div>
+            <BrandLogo className="account-profile-logo" size={46} showArabicSubtitle={false} variant="horizontal" />
             <h2>{isArabic ? "ملفي الشخصي" : "My profile"}</h2>
             {user ? (
               <>
@@ -52,11 +60,16 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           </div>
           <AccountThemeToggle locale={locale} />
         </section>
+        <TwoFactorSettings enabled={user?.twoFactorEnabled ?? false} locale={locale} />
         <div className="account-path-grid">
           <article className="account-path-card">
             <span className="eyebrow">{isArabic ? "الخيار الأول" : "Path A"}</span>
             <h2>{isArabic ? "أنشئ متجرك بنفسك الآن" : "Build your store yourself"}</h2>
-            <p>{isArabic ? "اختر قالباً، أضف هوية متجرك، وابدأ بإدارة منتجاتك من لوحة مستقلة." : "Choose a template, add your branding, and manage products from your own dashboard."}</p>
+            <p>
+              {isArabic
+                ? "أنشئ 70% من متجرك فوراً باختيار القالب ورفع الشعار والألوان والمنتجات الأولية؛ ثم يراجع المطور النسخة ويؤكد التسليم خلال 24–48 ساعة."
+                : "Generate 70% of your store immediately with a template, logo, colors, and initial products; the developer then reviews and confirms delivery within 24–48 hours."}
+            </p>
             <Link className="button-link" href={createStoreHref}>{isArabic ? "ابدأ إعداد المتجر" : "Start store setup"}</Link>
           </article>
           <article className="account-path-card">
@@ -64,8 +77,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             <h2>{isArabic ? "اطلب من المطور تنفيذ وإدارة متجرك بالكامل" : "Have the developer build and manage your store"}</h2>
             <p>
               {isArabic
-                ? "تنفيذ مخصص، استضافة، نشر على دومينك الخاص، ومتابعة وإدارة مستمرة."
-                : "Custom implementation, hosting, publishing on your domain, and ongoing management."}
+                ? "الـ30% الأخيرة تشمل مراجعة المطور وتظبيط التفاصيل البصرية وإعداد الدومين والاستضافة، على المنصة أو استضافتك الخاصة، خلال 24–48 ساعة."
+                : "The final 30% covers developer review, visual refinement, and domain/hosting setup—on the platform or your own hosting—within 24–48 hours."}
             </p>
             <a className="button-link secondary" href="https://wa.me/201145335168" rel="noreferrer" target="_blank">
               {isArabic ? "تواصل عبر واتساب" : "Contact us on WhatsApp"}
