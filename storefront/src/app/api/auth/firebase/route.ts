@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
   const email = claims.email.trim().toLowerCase();
   const ownerEmail = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
-  const backendBaseUrl = process.env.BACKEND_URL || process.env.BAGISTO_API_URL || "http://127.0.0.1:8000";
+  const backendBaseUrl = process.env.BACKEND_URL || process.env.BAGISTO_API_URL || "http://127.0.0.1:8001";
   const backendUrl = new URL("api/v1/auth/firebase", backendBaseUrl.endsWith("/") ? backendBaseUrl : `${backendBaseUrl}/`);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);

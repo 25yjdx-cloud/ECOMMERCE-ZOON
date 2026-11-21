@@ -60,11 +60,12 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
     });
 
     Route::prefix('auth')->group(function () {
-        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,15');
-        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,15');
-        Route::post('/firebase', [AuthController::class, 'firebaseGoogle'])->middleware('throttle:5,15');
-        Route::post('/firebase-google', [AuthController::class, 'firebaseGoogle'])->middleware('throttle:5,15');
-        Route::post('/google/exchange', [AuthController::class, 'exchangeGoogleCode'])->middleware('throttle:5,15');
+        $authThrottle = app()->environment('local') ? 'throttle:60,1' : 'throttle:5,15';
+        Route::post('/register', [AuthController::class, 'register'])->middleware($authThrottle);
+        Route::post('/login', [AuthController::class, 'login'])->middleware($authThrottle);
+        Route::post('/firebase', [AuthController::class, 'firebaseGoogle'])->middleware($authThrottle);
+        Route::post('/firebase-google', [AuthController::class, 'firebaseGoogle'])->middleware($authThrottle);
+        Route::post('/google/exchange', [AuthController::class, 'exchangeGoogleCode'])->middleware($authThrottle);
         Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/logout', [AuthController::class, 'logout']);

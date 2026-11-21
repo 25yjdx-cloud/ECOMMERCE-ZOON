@@ -49,8 +49,10 @@ class AuthController extends Controller
     {
         $data = $request->validated();
         $rateLimitKey = 'commerceforge-login:'.hash('sha256', strtolower($data['email']).'|'.$request->ip());
+        $maximumAttempts = app()->environment('local') ? 100 : 5;
+        $decaySeconds = app()->environment('local') ? 60 : 900;
 
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+        if (RateLimiter::tooManyAttempts($rateLimitKey, $maximumAttempts)) {
             return response()->json(['message' => 'محاولات كثيرة. أعد المحاولة بعد 15 دقيقة.'], 429, [
                 'Retry-After' => (string) RateLimiter::availableIn($rateLimitKey),
             ]);
@@ -59,11 +61,11 @@ class AuthController extends Controller
         $user = User::query()->where('email', strtolower($data['email']))->first();
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
-            $attempts = RateLimiter::hit($rateLimitKey, 900);
+            $attempts = RateLimiter::hit($rateLimitKey, $decaySeconds);
             SecurityEventLogger::record(
                 $request,
                 'login.failed',
-                $attempts >= 5 ? 'high' : 'medium',
+                $attempts >= $maximumAttempts ? 'high' : 'medium',
                 $user?->id,
                 $data['email'],
                 ['attempts' => $attempts],
@@ -71,7 +73,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'بيانات تسجيل الدخول غير صحيحة.',
-            ], $attempts >= 5 ? 429 : 422);
+            ], $attempts >= $maximumAttempts ? 429 : 422);
         }
 
         if ($user->two_factor_enabled) {

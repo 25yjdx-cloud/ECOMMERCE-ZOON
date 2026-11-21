@@ -13,6 +13,8 @@ export function proxy(request: NextRequest) {
     || pathname.startsWith("/launch/")
     || pathname === "/dashboard/my-store"
     || pathname.startsWith("/dashboard/my-store/")
+    || pathname === "/dashboard/orders"
+    || pathname.startsWith("/dashboard/orders/")
     || pathname.startsWith("/manager")
     || pathname.startsWith("/admin");
 
@@ -34,6 +36,8 @@ export const config = {
     "/launch/:path*",
     "/dashboard/my-store",
     "/dashboard/my-store/:path*",
+    "/dashboard/orders",
+    "/dashboard/orders/:path*",
     "/manager",
     "/manager/:path*",
     "/admin",
