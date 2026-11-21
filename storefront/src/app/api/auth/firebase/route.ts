@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AUTH_COOKIE, isAuthUser, hasSameOrigin } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/auth-redirect";
 
 type FirebaseClaims = {
   aud?: unknown;
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
   const backendBaseUrl = process.env.BACKEND_URL || process.env.BAGISTO_API_URL || "http://127.0.0.1:8000";
   const backendUrl = new URL("api/v1/auth/firebase", backendBaseUrl.endsWith("/") ? backendBaseUrl : `${backendBaseUrl}/`);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4_000);
+  const timeout = setTimeout(() => controller.abort(), 10_000);
   let response: Response;
   let payload: unknown;
 
@@ -141,11 +142,7 @@ export async function POST(request: Request) {
 
   const backendUser = payload.user;
   const isOwner = email === ownerEmail || (ownerEmail === "" && backendUser.role === "super_admin");
-  const hasStore = (
-    ("has_store" in backendUser && backendUser.has_store === true) ||
-    (typeof backendUser.storeSlug === "string" && backendUser.storeSlug.length > 0)
-  );
-  const redirectTo = isOwner ? "/manager" : hasStore ? "/dashboard/my-store" : "/launch";
+  const redirectTo = getPostLoginPath(backendUser);
   const user = { ...backendUser, isOwner };
   const result = NextResponse.json({ status: "ok", user, redirectTo });
   result.cookies.set(AUTH_COOKIE, payload.token, {

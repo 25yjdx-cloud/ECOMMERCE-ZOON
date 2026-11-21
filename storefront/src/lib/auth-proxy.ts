@@ -9,15 +9,25 @@ export async function proxyAuth(
     return NextResponse.json({ message: "طلب غير صالح." }, { status: 403 });
   }
 
-  const response = await fetch(getBackendAuthUrl(`api/v1/auth/${endpoint}`), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: await request.text(),
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(getBackendAuthUrl(`api/v1/auth/${endpoint}`), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: await request.text(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
+    return NextResponse.json(
+      { message: timedOut ? "انتهت مهلة الاتصال بخادم تسجيل الدخول." : "تعذر الاتصال بخادم تسجيل الدخول." },
+      { status: timedOut ? 504 : 502 },
+    );
+  }
   const payload: unknown = await response.json();
 
   if (!response.ok) {

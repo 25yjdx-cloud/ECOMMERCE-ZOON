@@ -61,7 +61,7 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
 
   return (
     <>
-    <header className="site-header landing-nav sticky top-0 z-50 w-full transition-all duration-300 backdrop-blur-md border-b">
+    <header className={`site-header landing-nav sticky top-0 z-50 w-full transition-all duration-300 backdrop-blur-md border-b${user ? " is-authenticated" : ""}`}>
       <div className="navbar-inner">
       <Link className="brand-mark" href={homeHref} aria-label="CommerceForge">
         <BrandLogo size={42} showArabicSubtitle={false} variant="horizontal" />
@@ -73,6 +73,20 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
         <Link className="navbar-contact-link" href={contactHref}>{nav.contact}</Link>
       </nav>
       <div className="navbar-controls">
+        {user && (
+          <>
+            <button
+              className="navbar-utility-action"
+              onClick={() => window.history.length > 1 ? window.history.back() : window.location.assign(homeHref)}
+              type="button"
+            >
+              {locale === "ar" ? "رجوع" : "Back"}
+            </button>
+            <Link className="navbar-utility-action" href={homeHref}>
+              {locale === "ar" ? "الرئيسية" : "Home"}
+            </Link>
+          </>
+        )}
         <MarketSwitcher locale={locale} />
         <button
           aria-label={theme === "dark"
@@ -93,6 +107,7 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
         </Link>
         {user && <NotificationBell buttonClassName="navbar-icon-button navbar-notifications" locale={locale} />}
         <WorldQuickSwitcher locale={locale} storeSlug={user?.storeSlug ?? undefined} user={user} />
+        {user && <LogoutButton label={nav.logout} locale={locale} />}
         <Link className="navbar-account-pill" href={user ? accountHref : withLocale("/login")}>
           <UserRound aria-hidden="true" size={16} />
           {user ? locale === "ar" ? "حسابي" : "My account" : nav.login}

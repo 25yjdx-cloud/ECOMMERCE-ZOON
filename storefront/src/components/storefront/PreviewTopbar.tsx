@@ -9,6 +9,7 @@ import { BackendConnectionStatus } from "./BackendConnectionStatus";
 import { PlatformUtilities } from "@/components/theme/PlatformUtilities";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
+import { BackButton } from "@/components/platform/BackButton";
 
 export function PreviewTopbar({
   dictionary,
@@ -44,28 +45,27 @@ export function PreviewTopbar({
         <BackendConnectionStatus dictionary={dictionary} />
       </div>
       <div className="preview-topbar-actions">
-        <Link href={createLocaleHref(
-          user?.role === "super_admin" ? "/manager" : user?.role === "merchant" ? "/dashboard/my-store" : "/",
-          query,
-          locale,
-        )}>
-          {locale === "ar" ? "رجوع للمنصة" : "Back to platform"}
-        </Link>
-        {user?.role === "super_admin" ? (
+        {user && (
           <>
+            <BackButton locale={locale} />
+            <Link href={createLocaleHref("/", query, locale)}>{locale === "ar" ? "الرئيسية" : "Home"}</Link>
             <WorldQuickSwitcher
               locale={locale}
               preset={preset.id}
               storeSlug={Array.isArray(query.store) ? query.store[0] : query.store}
               user={user}
             />
+            <LogoutButton label={dictionary.navigation.logout} locale={locale} />
+          </>
+        )}
+        {user?.role === "super_admin" ? (
+          <>
             <Link href={createLocaleHref(`/manager/${preset.id}`, query, locale)}>
               {dictionary.navigation.platformManager}
             </Link>
             <Link href={createLocaleHref("/admin/clients", { ...query, template: preset.id }, locale)}>
               {dictionary.navigation.cloneTemplate}
             </Link>
-            <LogoutButton label={dictionary.navigation.logout} locale={locale} />
           </>
         ) : user?.role === "merchant" ? (
           <Link href={createLocaleHref(

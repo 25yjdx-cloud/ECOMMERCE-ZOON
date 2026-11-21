@@ -26,6 +26,7 @@ import {
 } from "@/lib/store-payload";
 import { StorePixelTracking } from "./StorePixelTracking";
 import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import type { CSSProperties } from "react";
 
 export function StorePreview({
@@ -194,7 +195,16 @@ export function StorePreview({
           <span>{storePayload.storeName}</span>
         </Link>
         <div className="store-topbar-actions">
-          {isLiveStore && <WorldQuickSwitcher locale={locale} storeSlug={storeSlug} user={user} />}
+          {isLiveStore && user && (
+            <>
+              <button className="navbar-utility-action" onClick={() => window.history.length > 1 ? window.history.back() : window.location.assign("/")} type="button">
+                {locale === "ar" ? "رجوع" : "Back"}
+              </button>
+              <Link className="navbar-utility-action" href={`/?lang=${locale}`}>{locale === "ar" ? "الرئيسية" : "Home"}</Link>
+              <WorldQuickSwitcher locale={locale} storeSlug={storeSlug} user={user} />
+              <LogoutButton label={locale === "ar" ? "تسجيل الخروج" : "Sign out"} locale={locale} />
+            </>
+          )}
           <label className="visually-hidden" htmlFor="store-search">{store.search}</label>
           <input
             className="store-search"

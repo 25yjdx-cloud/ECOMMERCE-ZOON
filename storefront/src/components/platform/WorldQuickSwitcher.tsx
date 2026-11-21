@@ -14,7 +14,7 @@ export function WorldQuickSwitcher({
   preset?: PresetId;
   storeSlug?: string;
 }) {
-  if (user?.role !== "super_admin") return null;
+  if (!user) return null;
 
   const query = `?lang=${locale}`;
   const storefrontQuery = new URLSearchParams({ lang: locale });
@@ -23,13 +23,18 @@ export function WorldQuickSwitcher({
     { href: `/${query}`, label: locale === "ar" ? "التسويق" : "Marketing" },
     { href: `/manager${query}`, label: locale === "ar" ? "مدير المنصة" : "Platform manager" },
     { href: `/dashboard/my-store${query}`, label: locale === "ar" ? "لوحة التاجر" : "Merchant dashboard" },
-    { href: `/preview/${preset}?${storefrontQuery}`, label: locale === "ar" ? "المتجر العام" : "Storefront" },
-    { href: `/final-preview/${preset}${query}`, label: locale === "ar" ? "معاينة القالب" : "Template preview" },
+    { href: `/dashboard/orders${query}`, label: locale === "ar" ? "واجهة الموظفين" : "Staff workspace" },
+    {
+      href: storeSlug
+        ? `/s/${encodeURIComponent(storeSlug)}?${storefrontQuery}`
+        : `/preview/${preset}?${storefrontQuery}`,
+      label: locale === "ar" ? "المتجر" : "Storefront",
+    },
   ];
 
   return (
     <details className="world-quick-switcher">
-      <summary>{locale === "ar" ? "التنقل بين العوالم الخمسة" : "5-world quick switcher"}</summary>
+      <summary>{locale === "ar" ? "مبدل العوالم الخمسة" : "5-world switcher"}</summary>
       <nav aria-label={locale === "ar" ? "التنقل بين العوالم الخمسة" : "Navigate the five worlds"}>
         {worlds.map((world) => (
           <Link href={world.href} key={world.label}>{world.label}</Link>

@@ -4,11 +4,15 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import type { MockLocale } from "@/mock/types";
+import type { MemberRole } from "@/lib/auth";
 
-export function DashboardNavigation() {
+export function DashboardNavigation({ memberRole }: { memberRole: MemberRole | null }) {
   const searchParams = useSearchParams();
   const locale: MockLocale = searchParams.get("lang") === "en" ? "en" : "ar";
-  const navigationItems = locale === "ar"
+  const staffView = memberRole === "staff" || memberRole === "order_manager";
+  const navigationItems = staffView
+    ? [{ href: "/dashboard/orders", label: locale === "ar" ? "الطلبات" : "Orders" }]
+    : locale === "ar"
     ? [
         { href: "/dashboard", label: "نظرة عامة" },
         { href: "/dashboard/my-store", label: "متجري" },

@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { AuthUser } from "@/lib/auth";
 import type { MockLocale } from "@/mock/types";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { BackButton } from "@/components/platform/BackButton";
 import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 
 export function StorefrontPageShell({
@@ -29,9 +31,16 @@ export function StorefrontPageShell({
           <span>{storeName}</span>
         </Link>
         <nav aria-label={isArabic ? "التنقل في المتجر" : "Store navigation"} className="store-topbar-actions">
+          {user && (
+            <>
+              <BackButton locale={locale} />
+              <Link className="navbar-utility-action" href={`/?lang=${locale}`}>{isArabic ? "الرئيسية" : "Home"}</Link>
+            </>
+          )}
           <Link href={`${base}/track?lang=${locale}`}>{isArabic ? "تتبع طلبك" : "Track your order"}</Link>
           <Link href={`${base}/returns?lang=${locale}`}>{isArabic ? "الاستبدال والاسترجاع" : "Returns & exchange"}</Link>
           <WorldQuickSwitcher locale={locale} storeSlug={slug} user={user} />
+          {user && <LogoutButton label={isArabic ? "تسجيل الخروج" : "Sign out"} locale={locale} />}
         </nav>
       </header>
       <main className="page-shell">

@@ -1,45 +1,36 @@
 import { redirect } from "next/navigation";
+import { MerchantStoreDashboard } from "@/components/merchant/MerchantStoreDashboard";
 import { getAuthUser } from "@/lib/auth";
+import { getLocale, type QueryValues } from "@/i18n/locale";
+import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocumentAttributes";
 
-const orders = [
-  { number: "#IOY329", customer: "عميل توضيحي 1", date: "2026-11-18", status: "قيد التجهيز" },
-  { number: "#IOY328", customer: "عميل توضيحي 2", date: "2026-11-17", status: "تم التسليم" },
-  { number: "#IOY327", customer: "عميل توضيحي 3", date: "2026-11-16", status: "بانتظار التأكيد" },
-];
+export default async function DashboardOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<QueryValues>;
+}) {
+  const [query, user] = await Promise.all([searchParams, getAuthUser()]);
+  const locale = getLocale(query.lang);
+  if (!user) redirect(`/login?lang=${locale}&redirect=%2Fdashboard%2Forders`);
+  if (user.role !== "merchant") redirect(`/manager?lang=${locale}`);
+  if (!user.storeSlug) redirect(`/launch?lang=${locale}`);
 
-export default async function DashboardOrdersPage() {
-  const user = await getAuthUser();
-  if (!user) redirect("/login?lang=ar&redirect=%2Fdashboard%2Fmy-store");
-  if (user.role !== "merchant") redirect("/manager/classic?lang=ar");
-  redirect("/dashboard/my-store");
+  const isArabic = locale === "ar";
 
   return (
     <main className="dashboard-page">
-      <span className="eyebrow">متابعة تجريبية</span>
-      <h1>الطلبات</h1>
-      <p className="dashboard-description">لا توجد طلبات عملاء حقيقية في هذه الصفحة.</p>
-      <div className="dashboard-table-wrap">
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th scope="col">رقم الطلب</th>
-              <th scope="col">العميل</th>
-              <th scope="col">التاريخ</th>
-              <th scope="col">الحالة</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order.number}>
-                <th scope="row">{order.number}</th>
-                <td>{order.customer}</td>
-                <td dir="ltr">{order.date}</td>
-                <td>{order.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <LocaleDocumentAttributes locale={locale} />
+      <span className="eyebrow">CommerceForge</span>
+      <h1>{isArabic ? "الطلبات" : "Orders"}</h1>
+      <p className="dashboard-description">
+        {isArabic ? "طلبات المتجر والصلاحيات المخصصة لفريق العمل." : "Store orders and the permissions assigned to your staff."}
+      </p>
+      <MerchantStoreDashboard
+        initialSection="orders"
+        locale={locale}
+        memberRole={user.memberRole ?? null}
+        slug={user.storeSlug}
+      />
     </main>
   );
 }

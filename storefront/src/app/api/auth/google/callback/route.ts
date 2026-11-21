@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AUTH_COOKIE, getBackendAuthUrl, isAuthUser } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/auth-redirect";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,12 +9,18 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?notice=oauth-failed", request.url));
   }
 
-  const response = await fetch(getBackendAuthUrl("api/v1/auth/google/exchange"), {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(getBackendAuthUrl("api/v1/auth/google/exchange"), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    return NextResponse.redirect(new URL("/login?notice=backend-unavailable", request.url));
+  }
   if (!response.ok) return NextResponse.redirect(new URL("/login?notice=oauth-failed", request.url));
 
   const payload: unknown = await response.json();
@@ -28,7 +35,8 @@ export async function GET(request: Request) {
     throw new Error("Bagisto returned an invalid Google authentication response.");
   }
 
-  const result = NextResponse.redirect(new URL("/login?oauth=success", request.url));
+  const destination = getPostLoginPath(payload.user);
+  const result = NextResponse.redirect(new URL(`${destination}?oauth=success`, request.url));
   result.cookies.set(AUTH_COOKIE, payload.token, {
     httpOnly: true,
     maxAge: 60 * 60 * 24,

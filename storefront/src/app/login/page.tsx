@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocumentAttributes";
 import { getAuthUser, safeInternalRedirect } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/auth-redirect";
 import { getLocale, type QueryValues } from "@/i18n/locale";
 import { getDictionary } from "@/i18n/dictionaries";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { Footer } from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
   title: "تسجيل الدخول | CommerceForge",
@@ -22,21 +24,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const redirectParam = Array.isArray(query.redirect) ? query.redirect[0] : query.redirect;
   const notice = Array.isArray(query.notice) ? query.notice[0] : query.notice;
   const template = Array.isArray(query.template) ? query.template[0] : query.template;
-  const redirectTo = safeInternalRedirect(
-    redirectParam ?? null,
-    user?.role === "super_admin"
-      ? "/manager/classic"
-      : template
-        ? `/launch?template=${encodeURIComponent(template)}&lang=${locale}`
-        : "/dashboard/my-store",
-  );
+  const fallbackPath = user
+    ? getPostLoginPath(user)
+    : template
+      ? `/launch?template=${encodeURIComponent(template)}&lang=${locale}`
+      : "/launch";
+  const redirectTo = safeInternalRedirect(redirectParam ?? null, fallbackPath);
 
   if (user && !(user.role === "merchant" && notice === "owner-only")) {
-    redirect(user.role === "super_admin"
-      ? redirectTo
-      : user.storeSlug || !redirectTo.startsWith("/launch")
-        ? "/dashboard/my-store"
-        : redirectTo);
+    redirect(getPostLoginPath(user));
   }
 
   const plan = Array.isArray(query.plan) ? query.plan[0] : query.plan;
@@ -107,6 +103,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           />
         )}
       </section>
+      <Footer locale={locale} />
     </main>
   );
 }

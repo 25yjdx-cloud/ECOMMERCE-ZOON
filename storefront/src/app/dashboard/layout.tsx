@@ -26,7 +26,7 @@ export default async function DashboardLayout({
     <div className="dashboard-shell">
       <DashboardWorldShell user={user}>
         <div className="dashboard-frame">
-          <Suspense fallback={null}><DashboardNavigation /></Suspense>
+          <Suspense fallback={null}><DashboardNavigation memberRole={user.memberRole ?? null} /></Suspense>
           <div className="dashboard-content">{children}</div>
         </div>
       </DashboardWorldShell>

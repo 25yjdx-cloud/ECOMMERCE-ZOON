@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/assets/platform-icon.svg",
         sizes: "any",
         type: "image/svg+xml",
-        purpose: "maskable",
+        purpose: "any",
       },
     ],
   };

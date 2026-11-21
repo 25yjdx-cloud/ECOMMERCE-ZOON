@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getPostLoginPath } from "@/lib/auth-redirect";
 import { signInWithPopup } from "firebase/auth";
 import type { MockLocale } from "@/mock/types";
 import { MARKET_CONFIG } from "@/config/pricing.config";
@@ -202,14 +203,9 @@ const mode = initialMode;
         return;
       }
 
-      const requestedDestination = payload
-        && typeof payload === "object"
-        && "redirectTo" in payload
-        && typeof payload.redirectTo === "string"
-        ? payload.redirectTo
-        : "/launch";
-      const destination = ["/manager", "/dashboard/my-store", "/launch"].includes(requestedDestination)
-        ? requestedDestination
+      const firebaseUser = (payload as { user?: { role?: string; storeSlug?: string | null } }).user;
+      const destination = firebaseUser?.role === "super_admin" || firebaseUser?.role === "merchant"
+        ? getPostLoginPath({ role: firebaseUser.role, storeSlug: firebaseUser.storeSlug ?? null })
         : "/launch";
       setFirebaseIdToken(null);
       window.location.assign(destination);
@@ -277,20 +273,10 @@ const mode = initialMode;
       return;
     }
 
-    const user = (payload as { user?: { role?: string } }).user;
-    const requestedIsPrivileged = redirectTo.startsWith("/manager/") || redirectTo.startsWith("/admin/");
-    const template = new URLSearchParams(window.location.search).get("template");
-    const destination = user?.role === "super_admin"
-      ? plan && template
-        ? `/manager/${encodeURIComponent(template)}`
-        : plan
-          ? "/manager/classic"
-        : redirectTo
-      : requestedIsPrivileged
-        ? "/dashboard/my-store"
-        : mode === "register" && !(user && "storeSlug" in user && user.storeSlug)
-          ? redirectTo.startsWith("/launch") ? redirectTo : `/launch?lang=${locale}`
-        : redirectTo;
+    const user = (payload as { user?: { role?: string; storeSlug?: string | null } }).user;
+    const destination = user?.role === "super_admin" || user?.role === "merchant"
+      ? getPostLoginPath({ role: user.role, storeSlug: user.storeSlug ?? null })
+      : "/launch";
 
     router.replace(destination);
     router.refresh();

@@ -3857,7 +3857,7 @@ html[data-theme="dark"] .manager-connection {
   background: linear-gradient(110deg, #fff0b3 0%, #f5bf4f 48%, #d88a1c 100%);
   background-clip: text;
   color: transparent;
-  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-size: clamp(2.25rem, 4vw, 3rem);
   font-weight: 900;
   letter-spacing: -0.045em;
   line-height: 1.02;
@@ -5196,6 +5196,30 @@ body {
   gap: 0.5rem;
 }
 
+.navbar-utility-action {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding-inline: 0.25rem;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.navbar-utility-action:hover,
+.navbar-utility-action:focus-visible {
+  color: var(--brand);
+}
+
+.preview-topbar .navbar-utility-action {
+  color: var(--white);
+}
+
 .navbar-icon-button,
 .navbar-language-pill,
 .navbar-account-pill,
@@ -6039,6 +6063,26 @@ html[data-theme="dark"] .ai-assistant-trigger {
   .navbar-controls > .market-switcher { display: none; }
   .mobile-drawer-footer > .market-switcher { width: 100%; justify-content: center; margin-bottom: 0.75rem; }
   .mobile-drawer-footer > .market-switcher button { flex: 1; }
+  .site-header.landing-nav.is-authenticated {
+    height: auto;
+    min-height: 4rem;
+  }
+  .site-header.landing-nav.is-authenticated .navbar-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .site-header.landing-nav.is-authenticated .navbar-controls {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--line);
+    padding-block: 0.25rem;
+  }
+  .site-header.landing-nav.is-authenticated .theme-toggle,
+  .site-header.landing-nav.is-authenticated .navbar-language-pill,
+  .site-header.landing-nav.is-authenticated .mobile-menu-toggle {
+    display: none;
+  }
   .cf-hero-unified-card { padding: 2.5rem 1rem; }
   .hybrid-modal-actions > * { width: 100%; }
 }
@@ -6119,6 +6163,19 @@ html[data-theme="dark"] .ai-assistant-trigger {
 
   .navbar-controls {
     gap: 0.4rem;
+  }
+
+  .navbar-utility-action {
+    font-size: 0.68rem;
+    padding-inline: 0.1rem;
+  }
+
+  .navbar-controls .world-quick-switcher summary {
+    max-width: 7.5rem;
+    overflow: hidden;
+    padding-inline: 0.5rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .navbar-icon-button,

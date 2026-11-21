@@ -329,14 +329,16 @@ export function MerchantStoreDashboard({
   slug,
   locale,
   memberRole,
+  initialSection,
 }: {
   slug: string;
   locale: MockLocale;
   memberRole: MemberRole | null;
+  initialSection?: Section;
 }) {
   const text = copy[locale];
   const [section, setSection] = useState<Section>(
-    memberRole === "staff" || memberRole === "order_manager" ? "orders" : "branding",
+    initialSection ?? (memberRole === "staff" || memberRole === "order_manager" ? "orders" : "branding"),
   );
   const [store, setStore] = useState<StoreMetadata>();
   const [products, setProducts] = useState<Product[]>([]);
@@ -373,6 +375,18 @@ export function MerchantStoreDashboard({
   const load = useCallback(async () => {
     try {
       const base = apiBase(slug);
+      const staffView = memberRole === "staff" || memberRole === "order_manager";
+      if (staffView) {
+        const ordersResult = await requestJson<ApiResponse<Order[]>>(`${base}/orders`);
+        setError("");
+        setOrders(ordersResult.data);
+        setStore(undefined);
+        setProducts([]);
+        setShippingSettings(undefined);
+        setShippingIntegrations([]);
+        return;
+      }
+
       const [storeResult, productsResult, ordersResult, shippingResult, integrationsResult] = await Promise.all([
         requestJson<ApiResponse<StoreMetadata>>(`${base}/config`),
         requestJson<ApiResponse<Product[]>>(`${base}/products`),
@@ -411,7 +425,7 @@ export function MerchantStoreDashboard({
     } finally {
       setLoading(false);
     }
-  }, [slug, text.loadError]);
+  }, [memberRole, slug, text.loadError]);
 
   useEffect(() => {
     void Promise.resolve().then(load);
@@ -723,7 +737,7 @@ export function MerchantStoreDashboard({
   }
 
   const domainStatus = store?.config.custom_domain_status;
-  const effectiveRole = memberRole === "order_manager" ? "staff" : memberRole ?? "staff";
+  const effectiveRole = memberRole === "order_manager" ? "staff" : memberRole ?? "owner";
   const sections: Section[] = effectiveRole === "staff"
     ? ["orders"]
     : effectiveRole === "manager"
@@ -743,7 +757,7 @@ export function MerchantStoreDashboard({
             {text[item]}
           </button>
         ))}
-        {store && (
+        {store && effectiveRole !== "staff" && (
           <Link
             className="button-link secondary merchant-preview-link"
             href={`/preview/${store.templateSlug}?store=${encodeURIComponent(slug)}&lang=${locale}`}

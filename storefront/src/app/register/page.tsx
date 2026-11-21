@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { Footer } from "@/components/landing/Footer";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { LocaleDocumentAttributes } from "@/components/storefront/LocaleDocumentAttributes";
 import { getDictionary } from "@/i18n/dictionaries";
 import { getLocale, type QueryValues } from "@/i18n/locale";
 import { getAuthUser, safeInternalRedirect } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/auth-redirect";
 
 export const metadata: Metadata = {
   title: "إنشاء حساب | CommerceForge",
@@ -28,11 +30,7 @@ export default async function RegisterPage({
   );
 
   if (user) {
-    redirect(user.role === "super_admin"
-      ? "/manager"
-      : user.storeSlug
-        ? "/dashboard/my-store"
-        : redirectTo);
+    redirect(getPostLoginPath(user));
   }
 
   const dictionary = getDictionary(locale);
@@ -76,6 +74,7 @@ export default async function RegisterPage({
           redirectTo={redirectTo}
         />
       </section>
+      <Footer locale={locale} />
     </main>
   );
 }
