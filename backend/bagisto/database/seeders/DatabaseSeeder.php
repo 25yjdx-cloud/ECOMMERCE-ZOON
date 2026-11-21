@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Webkul\Installer\Database\Seeders\DatabaseSeeder as BagistoDatabaseSeeder;
 
 class DatabaseSeeder extends Seeder
@@ -14,10 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        $this->call(BagistoDatabaseSeeder::class);
+        if (! DB::table('admins')->exists()) {
+            $this->call(BagistoDatabaseSeeder::class);
+        }
+
         $this->call(CommerceForgeSeeder::class);
 
-        if ($this->app->environment(['local', 'testing'])) {
+        if (app()->environment(['local', 'testing'])) {
             $this->call(CommerceForgeTestAccountsSeeder::class);
         }
     }

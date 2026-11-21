@@ -31,7 +31,8 @@ services:
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
+      APP_URL: http://127.0.0.1:8001
+      SANCTUM_STATEFUL_DOMAINS: localhost:3006,127.0.0.1:3006
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: 3306
@@ -47,7 +48,7 @@ services:
       - bagisto-vendor:/workspace/vendor
       - ../config/templates/presets.json:/commerceforge-presets.json:ro
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8001:8000"
     depends_on:
       db:
         condition: service_healthy
