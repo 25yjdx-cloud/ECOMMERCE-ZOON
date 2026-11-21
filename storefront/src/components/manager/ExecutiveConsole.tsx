@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Activity, ArrowDownLeft, ArrowDownRight, ArrowUpRight, ChevronLeft, ExternalLink, LayoutDashboard, LockKeyhole, Search, ShieldCheck, Store as StoreIcon, Users, WandSparkles } from "lucide-react";
 import type { MockLocale } from "@/mock/types";
+import type { AuthUser } from "@/lib/auth";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 
 type ZoneCounts = Record<"marketing" | "merchant_dashboard" | "storefront" | "other", number>;
 type Metric = {
@@ -21,17 +28,17 @@ type Metric = {
 type Event = { id: number; type: string; store_slug: string | null; subject: string | null; created_at: string };
 type SecurityLog = { id: number; event: string; severity: string; ip_address: string | null; identifier_hash: string | null; created_at: string };
 type Store = { slug: string; store_name: string; template_slug: string; plan: string; status: string; build_completion: number; owner_name: string | null; owner_email: string | null; config: Record<string, unknown> };
-type Tab = "overview" | "studio" | "stores" | "templates" | "plans" | "sheets" | "security";
+type Tab = "overview" | "studio" | "stores" | "catalog" | "integrations";
 
 const tabs: Array<{ id: Tab; ar: string; en: string }> = [
-  { id: "overview", ar: "القيادة والرصد المباشر", en: "Live overview" },
-  { id: "studio", ar: "الاستوديو المرئي 70/30", en: "Visual studio" },
+  { id: "overview", ar: "نظرة عامة", en: "Overview" },
+  { id: "studio", ar: "استوديو المتاجر", en: "Store studio" },
   { id: "stores", ar: "المتاجر والتجار", en: "Stores & merchants" },
-  { id: "templates", ar: "القوالب", en: "Templates" },
-  { id: "plans", ar: "الخطط والتسعير", en: "Plans" },
-  { id: "sheets", ar: "تصدير ومزامنة Sheets", en: "Sheets & export" },
-  { id: "security", ar: "الأمان وسجل التدقيق", en: "Security & audit" },
+  { id: "catalog", ar: "القوالب والباقات", en: "Templates & plans" },
+  { id: "integrations", ar: "الربط السحابي والأمان", en: "Cloud & security" },
 ];
+
+const tabIcons = { overview: LayoutDashboard, studio: WandSparkles, stores: StoreIcon, catalog: Activity, integrations: ShieldCheck };
 
 const labels: Record<string, { ar: string; en: string }> = {
   new_signup: { ar: "تسجيل جديد", en: "New signup" },
@@ -54,7 +61,14 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-export function ExecutiveConsole({ locale }: { locale: MockLocale }) {
+function relativeTime(value: string, locale: MockLocale): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
+  const unit: Intl.RelativeTimeFormatUnit = minutes < 60 ? "minute" : minutes < 1440 ? "hour" : "day";
+  const amount = unit === "minute" ? minutes : unit === "hour" ? Math.floor(minutes / 60) : Math.floor(minutes / 1440);
+  return new Intl.RelativeTimeFormat(locale === "ar" ? "ar-EG" : "en", { numeric: "auto" }).format(-amount, unit);
+}
+
+export function ExecutiveConsole({ locale, ownerName = "", user }: { locale: MockLocale; ownerName?: string; user: AuthUser }) {
   const ar = locale === "ar";
   const [tab, setTab] = useState<Tab>("overview");
   const [metric, setMetric] = useState<Metric | null>(null);
@@ -70,6 +84,10 @@ export function ExecutiveConsole({ locale }: { locale: MockLocale }) {
   const [chartDays, setChartDays] = useState<7 | 30>(7);
   const [draft, setDraft] = useState({ store_name: "", store_name_en: "", hero_title: "", hero_title_en: "", hero_subtitle: "", hero_subtitle_en: "", hero_cta: "", hero_cta_en: "", primary_color: "#F59E0B", button_color: "#F59E0B", background_color: "#FFFFFF", button_width: 220, button_height: 52, button_font_size: 16, button_radius: 12, trust_badges_text: "", domain: "", custom_domain_status: "pending" as "pending" | "active" | "suspended" });
   const [previewLocale, setPreviewLocale] = useState<"ar" | "en">("ar");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [showOnline, setShowOnline] = useState(false);
+  const [drawerStore, setDrawerStore] = useState<Store | null>(null);
+  const [storeFilter, setStoreFilter] = useState<"all" | "active" | "pending" | "suspended">("all");
   const lastEventId = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -131,6 +149,7 @@ export function ExecutiveConsole({ locale }: { locale: MockLocale }) {
   }, [selectedSlug]);
 
   const selectedStore = stores.find((store) => store.slug === selectedSlug) ?? null;
+  const visibleStores = stores.filter((store) => storeFilter === "all" || (storeFilter === "pending" ? store.status === "pending" || store.build_completion < 100 : store.status === storeFilter));
   const chartPoints = useMemo(() => {
     const byDay = new Map<string, number>();
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - chartDays + 1);
@@ -139,9 +158,15 @@ export function ExecutiveConsole({ locale }: { locale: MockLocale }) {
       byDay.set(item.day, (byDay.get(item.day) ?? 0) + item.total);
     }
     const values = [...byDay.values()].slice(-chartDays);
-    if (values.length < 2) return "0,76 100,76";
+    if (values.length < 2) return "M 0 68 C 25 68, 75 68, 100 68";
     const max = Math.max(...values, 1);
-    return values.map((value, index) => `${(index / (values.length - 1)) * 100},${76 - (value / max) * 66}`).join(" ");
+    const points = values.map((value, index) => ({ x: (index / (values.length - 1)) * 100, y: 72 - (value / max) * 58 }));
+    return points.reduce((path, point, index) => {
+      if (index === 0) return `M ${point.x} ${point.y}`;
+      const previous = points[index - 1];
+      const midpoint = (previous.x + point.x) / 2;
+      return `${path} C ${midpoint} ${previous.y}, ${midpoint} ${point.y}, ${point.x} ${point.y}`;
+    }, "");
   }, [chartDays, chartMode, metric?.series]);
 
   const preview = useCallback(() => {
@@ -189,32 +214,48 @@ export function ExecutiveConsole({ locale }: { locale: MockLocale }) {
   }
 
   return (
-    <section className="executive-console" dir={ar ? "rtl" : "ltr"}>
-      <header className="executive-commandbar">
-        <div><span className="executive-live-dot" /><strong>{ar ? `متواجدون الآن: ${metric?.online_total ?? "—"}` : `Online now: ${metric?.online_total ?? "—"}`}</strong><small>{ar ? `API 8001 · ${metric ? "متصل" : "غير متصل"}` : `API 8001 · ${metric ? "Connected" : "Offline"}`}</small></div>
-        <input aria-label={ar ? "بحث سريع" : "Global search"} onChange={(event) => setSearch(event.target.value)} placeholder={ar ? "ابحث بالمتجر أو الاسم أو البريد" : "Search store, owner, or email"} value={search} />
-        <button onClick={() => void refresh()} type="button">{ar ? "تحديث الآن" : "Refresh"}</button>
+    <section className="executive-shell" dir={ar ? "rtl" : "ltr"}>
+      <header className="executive-topbar">
+        <div className="executive-brand"><Link href="/" aria-label="CommerceForge"><BrandLogo size={36} showArabicSubtitle={false} /></Link><span className="executive-console-tag">Executive Console</span></div>
+        <label className="executive-search"><Search size={17} aria-hidden="true" /><input aria-label={ar ? "بحث سريع" : "Global search"} onChange={(event) => setSearch(event.target.value)} placeholder={ar ? "ابحث عن متجر أو تاجر" : "Search stores or merchants"} value={search} /><kbd>⌘ K</kbd></label>
+        <div className="executive-top-actions"><button className="executive-back-button" type="button" onClick={() => window.history.length > 1 ? window.history.back() : window.location.assign("/")} aria-label={ar ? "رجوع" : "Back"}><ArrowDownLeft size={16} />{ar ? "رجوع" : "Back"}</button><WorldQuickSwitcher locale={locale} user={user} />
+          <div className="executive-online-anchor"><button className="executive-online-pill" aria-expanded={showOnline} onClick={() => setShowOnline((value) => !value)} type="button"><span className="executive-live-dot" />{ar ? `متواجدون الآن ${metric?.online_total ?? "—"}` : `Online now ${metric?.online_total ?? "—"}`}</button>{showOnline && <div className="executive-popover"><strong>{ar ? "المتواجدون حسب المساحة" : "Presence by workspace"}</strong><span>{ar ? "التسويق" : "Marketing"}<b>{metric?.online_by_zone.marketing ?? 0}</b></span><span>{ar ? "لوحة التاجر" : "Merchant dashboard"}<b>{metric?.online_by_zone.merchant_dashboard ?? 0}</b></span><span>{ar ? "المتاجر" : "Storefronts"}<b>{metric?.online_by_zone.storefront ?? 0}</b></span></div>}</div>
+          <NotificationBell locale={locale} buttonClassName="executive-icon-button" />
+          <span className="executive-avatar" aria-label={ownerName}>{ownerName.trim().charAt(0).toUpperCase() || "C"}</span>
+          <LogoutButton label={ar ? "تسجيل الخروج" : "Sign out"} locale={locale} />
+        </div>
       </header>
-      <nav className="executive-rail" aria-label={ar ? "أقسام غرفة القيادة" : "Executive modules"}>
-        {tabs.map((item) => <button aria-current={tab === item.id ? "page" : undefined} key={item.id} onClick={() => setTab(item.id)} type="button">{ar ? item.ar : item.en}</button>)}
-      </nav>
-      {error && <p className="auth-error" role="alert">{error}</p>}
-      {toast && <p className="executive-toast" role="status" onAnimationEnd={() => setToast("")}>{toast}</p>}
+      <div className="executive-layout">
+        <aside className="executive-sidebar">
+          <div className="executive-sidebar-label">{ar ? "مساحة العمل" : "WORKSPACE"}</div>
+          <nav className="executive-rail" aria-label={ar ? "أقسام غرفة القيادة" : "Executive modules"}>
+            {tabs.map((item) => { const Icon = tabIcons[item.id]; return <button aria-current={tab === item.id ? "page" : undefined} key={item.id} onClick={() => setTab(item.id)} type="button"><Icon size={18} aria-hidden="true" /><span>{ar ? item.ar : item.en}</span>{tab === item.id && <ChevronLeft size={15} aria-hidden="true" />}</button>; })}
+          </nav>
+          <div className="executive-workspace-card"><span>{ar ? "التنقل السريع" : "QUICK ACCESS"}</span><Link href="/dashboard">{ar ? "لوحة التاجر" : "Merchant workspace"}<ExternalLink size={14} /></Link><Link href="/s/demo">{ar ? "المتجر التجريبي" : "Demo storefront"}<ExternalLink size={14} /></Link></div>
+          <div className="executive-sidebar-foot"><LockKeyhole size={15} /><span>{ar ? "وصول المالك محمي" : "Owner access protected"}</span></div>
+        </aside>
+        <main className="executive-content">
+          <div className="executive-mobile-search"><Search size={17} /><input aria-label={ar ? "بحث سريع" : "Global search"} onChange={(event) => setSearch(event.target.value)} placeholder={ar ? "ابحث عن متجر أو تاجر" : "Search stores or merchants"} value={search} /></div>
+          {error && <p className="executive-error" role="alert">{error}</p>}
+          {toast && <p className="executive-toast" role="status" onAnimationEnd={() => setToast("")}>{toast}</p>}
 
       {tab === "overview" && <>
+        <div className="executive-welcome"><div><span className="executive-eyebrow">{ar ? "مركز قيادة CommerceForge" : "COMMERCEFORGE COMMAND CENTER"}</span><h1>{ar ? "أهلاً بك في غرفة القيادة" : "Welcome to your command center"}</h1><p>{new Intl.DateTimeFormat(ar ? "ar-EG" : "en-US", { dateStyle: "full" }).format(new Date())} <span>·</span> {ar ? "إليك نبض المنصة في لمحة" : "Your platform at a glance"}</p></div><button className="executive-primary" onClick={() => { setTab("studio"); setSelectedSlug(stores.find((store) => store.build_completion < 100)?.slug ?? ""); }} type="button">{ar ? "مراجعة المتاجر المعلّقة" : "Review pending stores"}<ArrowDownRight size={17} /></button></div>
         <div className="executive-kpis">
-          <article><span>{ar ? "المتواجدون الآن" : "Online users"}</span><strong>{metric?.online_total ?? "—"}</strong><small>{ar ? `تسويق ${metric?.online_by_zone.marketing ?? 0} · تجار ${metric?.online_by_zone.merchant_dashboard ?? 0} · متاجر ${metric?.online_by_zone.storefront ?? 0}` : `Marketing ${metric?.online_by_zone.marketing ?? 0} · Merchants ${metric?.online_by_zone.merchant_dashboard ?? 0} · Storefront ${metric?.online_by_zone.storefront ?? 0}`}</small></article>
-          <article><span>{ar ? "المتاجر / المراجعة" : "Stores / review queue"}</span><strong>{metric?.stores_total ?? "—"}<i>{metric?.stores_pending_review ?? "—"}</i></strong><small>{ar ? "مصدرها قاعدة البيانات" : "Live database totals"}</small></article>
-          <article><span>{ar ? "الخطة المجانية / المدفوعة" : "Free / paid plans"}</span><strong>{metric?.plans.free ?? "—"}<i>{metric?.plans.paid ?? "—"}</i></strong><small>{ar ? "إيراد مؤكد" : "Confirmed revenue"}: {metric?.confirmed_revenue == null ? (ar ? "غير متصل" : "Not connected") : metric.confirmed_revenue}</small></article>
-          <article><span>{ar ? "إجمالي قيمة الطلبات GMV" : "Platform GMV"}</span><strong>{metric ? metric.gmv.toLocaleString() : "—"}</strong><small>{ar ? "إجمالي الطلبات" : "Orders"}: {metric?.orders_total ?? "—"}</small></article>
+          <article><div className="executive-kpi-top"><span>{ar ? "المتواجدون الآن" : "Online now"}</span><span className="executive-kpi-icon green"><Users size={18} /></span></div><strong>{metric?.online_total ?? "—"}</strong><small className="executive-trend positive"><ArrowUpRight size={14} />{ar ? `تسويق ${metric?.online_by_zone.marketing ?? 0} · تجار ${metric?.online_by_zone.merchant_dashboard ?? 0}` : `${metric?.online_by_zone.marketing ?? 0} marketing · ${metric?.online_by_zone.merchant_dashboard ?? 0} merchants`}</small></article>
+          <article><div className="executive-kpi-top"><span>{ar ? "إجمالي المتاجر" : "Total stores"}</span><span className="executive-kpi-icon"><StoreIcon size={18} /></span></div><strong>{metric?.stores_total ?? "—"}</strong><small className="executive-trend positive"><ArrowUpRight size={14} />{ar ? "المتاجر المسجلة بالمنصة" : "Stores registered on platform"}</small></article>
+          <article><div className="executive-kpi-top"><span>{ar ? "بانتظار المراجعة" : "Awaiting review"}</span><span className="executive-kpi-icon amber"><Activity size={18} /></span></div><strong>{metric?.stores_pending_review ?? "—"}</strong><small className="executive-trend pending">{ar ? "أولوية المراجعة" : "Review priority"}</small></article>
+          <article><div className="executive-kpi-top"><span>{ar ? "إجمالي المبيعات GMV" : "Platform GMV"}</span><span className="executive-kpi-icon"><ArrowUpRight size={18} /></span></div><strong>{metric ? metric.gmv.toLocaleString() : "—"}<small className="executive-currency">{ar ? "ج.م" : "EGP"}</small></strong><small className="executive-trend">{ar ? `من ${metric?.orders_total ?? 0} طلب` : `${metric?.orders_total ?? 0} orders`}</small></article>
         </div>
         <div className="executive-columns">
-          <article className="executive-panel"><h2>{ar ? "النمو ونشاط المنصة" : "Platform activity"}</h2><div className="executive-chart-controls"><select aria-label={ar ? "مقياس المخطط" : "Chart metric"} onChange={(event) => setChartMode(event.target.value as typeof chartMode)} value={chartMode}><option value="new_signup">{ar ? "التسجيلات الجديدة" : "New signups"}</option><option value="stores">{ar ? "المتاجر المنشأة" : "Stores created"}</option><option value="gmv">GMV</option></select><button onClick={() => setChartDays(7)} aria-pressed={chartDays === 7} type="button">7 {ar ? "أيام" : "days"}</button><button onClick={() => setChartDays(30)} aria-pressed={chartDays === 30} type="button">30 {ar ? "يومًا" : "days"}</button></div><svg className="executive-chart" viewBox="0 0 100 80" role="img" aria-label={ar ? "مخطط حقيقي من قاعدة البيانات" : "Live database chart"}><polyline points={chartPoints} fill="none" stroke="#F59E0B" strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg><small>{ar ? "تُقرأ السلسلة من أحداث المنصة والمتاجر والطلبات." : "Series comes from recorded events, stores, and orders."}</small></article>
-          <article className="executive-panel"><h2>{ar ? "بث الأحداث المباشر" : "Live event stream"}</h2><div className="executive-events">{events.slice(-12).reverse().map((event) => <div key={event.id}><b>{labels[event.type]?.[locale] ?? event.type}</b><span>{event.subject ?? event.store_slug ?? "—"}</span><time>{new Date(event.created_at).toLocaleTimeString(ar ? "ar-EG" : "en-US")}</time><a href={event.store_slug ? `/manager/${event.store_slug}` : "/manager"}>{ar ? "فتح" : "Review"}</a></div>)}{events.length === 0 && <p>{ar ? "لا توجد أحداث مسجلة بعد." : "No events have been recorded yet."}</p>}</div></article>
+          <article className="executive-panel executive-analytics"><header className="executive-panel-heading"><div><span className="executive-eyebrow">{ar ? "مؤشرات المنصة" : "PLATFORM INSIGHTS"}</span><h2>{ar ? "النمو ونشاط المنصة" : "Platform activity"}</h2></div><select aria-label={ar ? "مقياس المخطط" : "Chart metric"} onChange={(event) => setChartMode(event.target.value as typeof chartMode)} value={chartMode}><option value="new_signup">{ar ? "التسجيلات" : "Signups"}</option><option value="stores">{ar ? "المتاجر" : "Stores"}</option><option value="gmv">GMV</option></select></header><div className="executive-chart-controls"><div><button onClick={() => setChartDays(7)} aria-pressed={chartDays === 7} type="button">{ar ? "7 أيام" : "7 days"}</button><button onClick={() => setChartDays(30)} aria-pressed={chartDays === 30} type="button">{ar ? "30 يومًا" : "30 days"}</button></div><span>{ar ? "مقارنة بالفترة السابقة" : "Compared with previous period"} <ArrowUpRight size={14} /></span></div><svg className="executive-chart" viewBox="0 0 100 80" preserveAspectRatio="none" role="img" aria-label={ar ? "مخطط حقيقي من قاعدة البيانات" : "Live database chart"}><defs><linearGradient id="executive-chart-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="rgba(245,158,11,0.28)" /><stop offset="100%" stopColor="rgba(245,158,11,0)" /></linearGradient></defs><path d={`${chartPoints} L 100 80 L 0 80 Z`} fill="url(#executive-chart-fill)"/><path d={chartPoints} fill="none" stroke="#F6B94B" strokeWidth="1.6" vectorEffect="non-scaling-stroke" /></svg><div className="executive-chart-labels"><span>{ar ? "بداية الفترة" : "Period start"}</span><span>{ar ? "اليوم" : "Today"}</span></div></article>
+          <article className="executive-panel executive-activity"><header className="executive-panel-heading"><div><span className="executive-eyebrow">{ar ? "مباشر" : "LIVE"}</span><h2>{ar ? "آخر نشاط" : "Recent activity"}</h2></div><span className="executive-live-dot" /></header><div className="executive-events">{events.slice(-7).reverse().map((event) => <div key={event.id}><span className="executive-event-avatar">{(labels[event.type]?.[locale] ?? event.type).charAt(0)}</span><div><b>{labels[event.type]?.[locale] ?? event.type}</b><span>{event.subject ?? event.store_slug ?? "—"}</span></div><time>{relativeTime(event.created_at, locale)}</time></div>)}{events.length === 0 && <p>{ar ? "لا توجد أحداث مسجلة بعد." : "No events have been recorded yet."}</p>}</div></article>
         </div>
       </>}
 
-      {tab === "studio" && <div className="executive-studio">
+      {tab === "studio" && <>
+        <div className="executive-view-heading"><div><span className="executive-eyebrow">{ar ? "مراجعة وإبداع" : "REVIEW & CREATE"}</span><h1>{ar ? "استوديو المتاجر المرئي" : "Visual store studio"}</h1><p>{ar ? "عدّل واجهة المتجر وشاهد التغييرات مباشرة." : "Refine the storefront and preview changes instantly."}</p></div><span className="executive-soft-pill amber">{metric?.stores_pending_review ?? 0} {ar ? "بانتظار المراجعة" : "awaiting review"}</span></div>
+        <div className="executive-studio">
         <aside className="executive-panel executive-controls">
           <label>{ar ? "اختر متجرًا" : "Select store"}<select onChange={(event) => setSelectedSlug(event.target.value)} value={selectedSlug}><option value="">{ar ? "اختر متجرًا" : "Choose a store"}</option>{stores.map((store) => <option key={store.slug} value={store.slug}>{store.store_name} · {store.slug}</option>)}</select></label>
           {selectedStore && <>
@@ -229,16 +270,15 @@ export function ExecutiveConsole({ locale }: { locale: MockLocale }) {
             <button className="button-link" onClick={() => void saveVisualConfig()} type="button">{ar ? "حفظ تعديلات المتجر" : "Save store design"}</button><small>{ar ? "يحفظ الدومين كإعداد؛ حالة الاتصال DNS تظل قيد المراجعة." : "Domain is saved as configuration; DNS activation remains pending review."}</small>{savedAt && <small>{ar ? "آخر حفظ" : "Saved"}: {savedAt}</small>}
           </>}
         </aside>
-        <div className="executive-preview executive-panel">{selectedStore ? <iframe onLoad={preview} title={ar ? `معاينة ${selectedStore.store_name}` : `Preview ${selectedStore.store_name}`} src={`/s/${encodeURIComponent(selectedStore.slug)}?lang=${previewLocale}&manager_preview=1`} /> : <p>{ar ? "اختر متجرًا لفتح المعاينة التفاعلية." : "Choose a store to open its interactive preview."}</p>}</div>
-      </div>}
+        <div className={"executive-preview-wrap " + (previewDevice === "mobile" ? "is-mobile" : "")}><div className="executive-browser-toolbar"><span className="executive-browser-dots"><i /><i /><i /></span><span className="executive-browser-address">{selectedStore ? selectedStore.slug + ".commerceforge.store" : "preview.commerceforge.store"}</span><div className="executive-device-switch"><button type="button" aria-pressed={previewDevice === "desktop"} onClick={() => setPreviewDevice("desktop")}>{ar ? "سطح المكتب" : "Desktop"} · 1280</button><button type="button" aria-pressed={previewDevice === "mobile"} onClick={() => setPreviewDevice("mobile")}>{ar ? "الهاتف" : "Mobile"} · 375</button></div></div><div className="executive-preview executive-panel">{selectedStore ? <iframe onLoad={preview} title={ar ? `معاينة ${selectedStore.store_name}` : `Preview ${selectedStore.store_name}`} src={`/s/${encodeURIComponent(selectedStore.slug)}?lang=${previewLocale}&manager_preview=1`} /> : <p>{ar ? "اختر متجرًا لفتح المعاينة التفاعلية." : "Choose a store to open its interactive preview."}</p>}</div>
+      </div></div></>}
 
-      {tab === "stores" && <section className="executive-panel"><h2>{ar ? "دليل المتاجر المباشر" : "Live stores directory"}</h2>{stores.map((store) => <article className="executive-store-row" key={store.slug}><div><strong>{store.store_name}</strong><small>{store.slug} · {store.plan} · {store.status} · {store.build_completion}%</small><small>{store.owner_name} · {store.owner_email}</small></div><button onClick={() => void setStoreStatus(store)} type="button">{ar ? (store.status === "suspended" ? "تفعيل" : "إيقاف") : (store.status === "suspended" ? "Activate" : "Suspend")}</button><a className="button-link secondary" href={`/manager/${store.slug}`}>{ar ? "الاستوديو" : "Open studio"}</a><a className="button-link secondary" href={`/s/${store.slug}`} target="_blank">{ar ? "معاينة المتجر" : "Preview store"}</a></article>)}</section>}
-
-      {tab === "templates" && <section className="executive-panel"><h2>{ar ? "القوالب المسجلة في المنصة" : "Platform templates"}</h2><p>{ar ? "هذه القوالب تُقرأ من سجل قاعدة البيانات." : "Templates below come from the live database."}</p><TemplateCatalog locale={locale} /></section>}
-      {tab === "plans" && <section className="executive-panel"><h2>{ar ? "الخطط والاشتراكات الحالية" : "Current plans and subscriptions"}</h2><p>{ar ? `مجاني: ${metric?.plans.free ?? "—"} · مدفوع: ${metric?.plans.paid ?? "—"} · إيراد مؤكد: ${metric?.confirmed_revenue ?? (ar ? "غير متصل" : "not connected")}` : `Free: ${metric?.plans.free ?? "—"} · Paid: ${metric?.plans.paid ?? "—"} · Confirmed revenue: ${metric?.confirmed_revenue ?? "not connected"}`}</p><p>{ar ? "لا يوجد موصل فوترة في قاعدة البيانات الحالية؛ لا تُعرض أرقام إيراد تقديرية." : "No billing provider is configured in the current schema; estimated revenue is not shown."}</p></section>}
-      {tab === "sheets" && <section className="executive-panel"><h2>{ar ? "مزامنة Google Sheets وتصدير CSV" : "Google Sheets sync and CSV export"}</h2><p>{ar ? "أدخل رابط Webhook من Google Apps Script أو Zapier أو Make ليُرسل إليه كل حدث جديد." : "Add a webhook URL from Google Apps Script, Zapier, or Make to receive each new event."}</p><SheetsSettings locale={locale} onTest={() => void sendTestSync()} /><div className="executive-actions"><button onClick={() => void csv("stores")} type="button">{ar ? "تصدير المتاجر CSV" : "Export stores CSV"}</button><button onClick={() => void csv("events")} type="button">{ar ? "تصدير الأحداث CSV" : "Export events CSV"}</button><button onClick={() => void csv("orders")} type="button">{ar ? "تصدير الطلبات CSV" : "Export orders CSV"}</button></div></section>}
-      {tab === "security" && <section className="executive-panel"><h2>{ar ? "قفل حسابي Google وسجل التدقيق" : "Google account lock and audit log"}</h2><p>{ar ? `الحالة: ${metric?.manager_lock_ready ? "مهيأ — عنوانان" : `مغلق بأمان — ${metric?.google_allowlist_count ?? 0} من 2`}` : `Lock: ${metric?.manager_lock_ready ? "Ready — two addresses" : `Fail-closed — ${metric?.google_allowlist_count ?? 0} of 2`}`}</p><p>{ar ? "لا تُعرض عناوين القائمة في المتصفح." : "Allowlisted addresses are never sent to the browser."}</p><div className="executive-events">{securityLogs.map((log) => <div key={log.id}><b>{log.event}</b><span>{log.severity} · {log.ip_address ?? "—"}</span><time>{new Date(log.created_at).toLocaleString(ar ? "ar-EG" : "en-US")}</time><small>{log.identifier_hash?.slice(0, 12) ?? "—"}</small></div>)}</div></section>}
-    </section>
+      {tab === "stores" && <section className="executive-panel executive-directory"><header className="executive-panel-heading"><div><span className="executive-eyebrow">{ar ? "دليل المنصة" : "PLATFORM DIRECTORY"}</span><h1>{ar ? "المتاجر والتجار" : "Stores & merchants"}</h1></div><span className="executive-soft-pill">{stores.length} {ar ? "متجر" : "stores"}</span></header><div className="executive-filter-tabs">{(["all", "active", "pending", "suspended"] as const).map((filter) => <button type="button" key={filter} aria-pressed={storeFilter === filter} onClick={() => setStoreFilter(filter)}>{filter === "all" ? (ar ? "الكل" : "All") : filter === "active" ? (ar ? "منشور" : "Published") : filter === "pending" ? (ar ? "قيد المراجعة" : "In review") : (ar ? "موقوف" : "Suspended")}</button>)}</div><div className="executive-table-scroll"><table className="executive-table"><thead><tr><th>{ar ? "المتجر" : "Store"}</th><th>{ar ? "التاجر" : "Merchant"}</th><th>{ar ? "الباقة" : "Plan"}</th><th>{ar ? "الحالة" : "Status"}</th><th>{ar ? "الإجراءات" : "Actions"}</th></tr></thead><tbody>{visibleStores.map((store) => <tr key={store.slug}><td><div className="executive-store-cell"><span className="executive-store-monogram">{store.store_name.charAt(0)}</span><div><strong>{store.store_name}</strong><small>{store.slug} · {store.template_slug}</small></div></div></td><td><strong>{store.owner_name ?? "—"}</strong><small>{store.owner_email ?? "—"}</small></td><td><span className="executive-soft-pill">{store.plan}</span></td><td><span className={"executive-soft-pill " + (store.status === "active" ? "green" : store.status === "suspended" ? "red" : "amber")}>{store.status}</span></td><td><button className="executive-secondary" type="button" onClick={() => { setSelectedSlug(store.slug); setTab("studio"); }}>{ar ? "الاستوديو" : "Studio"}</button><button className="executive-secondary" type="button" onClick={() => setDrawerStore(store)}>{ar ? "التفاصيل" : "Details"}</button></td></tr>)}</tbody></table></div></section>}
+      {tab === "catalog" && <><section className="executive-panel"><header className="executive-panel-heading"><div><span className="executive-eyebrow">{ar ? "مكتبة التصميم" : "DESIGN LIBRARY"}</span><h1>{ar ? "قوالب المتاجر" : "Store templates"}</h1></div></header><TemplateCatalog locale={locale} /></section><section className="executive-plan-section"><header className="executive-panel-heading"><div><span className="executive-eyebrow">{ar ? "الاشتراكات" : "SUBSCRIPTIONS"}</span><h2>{ar ? "الخطط الحالية" : "Current plans"}</h2></div></header><div className="executive-plan-grid">{[{name:"Free", count:metric?.plans.free ?? 0, color:"slate"},{name:"Pro", count:metric?.plans.paid ?? 0, color:"gold"},{name:"Enterprise", count:0, color:"violet"}].map((plan) => <article className={"executive-plan-card " + plan.color} key={plan.name}><span>{plan.name}</span><strong>{plan.count}</strong><small>{ar ? "اشتراك حالي" : "subscribers"}</small><p>{ar ? "باقة CommerceForge" : "CommerceForge plan"}</p><button className="executive-secondary" type="button" onClick={() => setToast(ar ? "تعديل الأسعار يتطلب ربط نظام فوترة." : "Plan edits require a billing integration.")}>{ar ? "تفاصيل الباقة" : "Plan details"}</button></article>)}</div><p className="executive-muted-note">{ar ? "لا يوجد موصل فوترة؛ لا نعرض إيراداً تقديرياً." : "No billing provider is connected; estimated revenue is not shown."}</p></section></>}
+      {tab === "integrations" && <><div className="executive-integration-grid"><section className="executive-panel"><header className="executive-panel-heading"><div><span className="executive-eyebrow">LIVE SYNC</span><h1>Google Sheets</h1></div></header><p>{ar ? "اربط أحداث المنصة بورقة Google Sheets عبر Webhook." : "Connect platform events to Google Sheets with a webhook."}</p><SheetsSettings locale={locale} onTest={() => void sendTestSync()} /><div className="executive-actions"><button onClick={() => void csv("stores")} type="button">{ar ? "تصدير المتاجر CSV" : "Export stores CSV"}</button><button onClick={() => void csv("events")} type="button">{ar ? "تصدير الأحداث CSV" : "Export events CSV"}</button><button onClick={() => void csv("orders")} type="button">{ar ? "تصدير الطلبات CSV" : "Export orders CSV"}</button></div></section><section className="executive-panel executive-security-card"><span className={"executive-soft-pill " + (metric?.manager_lock_ready ? "green" : "amber")}>{metric?.manager_lock_ready ? (ar ? "نشط ومحمي" : "Active & protected") : (ar ? "مغلق بأمان" : "Fail-closed")}</span><strong className="executive-security-count">{metric?.google_allowlist_count ?? 0}<i>/ 2</i></strong><h2>{ar ? "قفل حسابَي المالك" : "Two-account owner lock"}</h2><p>{ar ? "الوصول مقتصر على حسابَي Google المحددين على الخادم." : "Access is restricted to two server-configured Google accounts."}</p><ShieldCheck size={32} /></section></div><section className="executive-panel"><header className="executive-panel-heading"><h2>{ar ? "سجل الأمان والتدقيق" : "Security & audit log"}</h2><button className="executive-secondary" onClick={() => void refresh()} type="button">{ar ? "تحديث السجل" : "Refresh"}</button></header><div className="executive-table-scroll"><table className="executive-table"><thead><tr><th>{ar ? "الحدث" : "Event"}</th><th>{ar ? "الخطورة" : "Severity"}</th><th>IP</th><th>{ar ? "المعرّف" : "Identifier"}</th><th>{ar ? "الوقت" : "Timestamp"}</th></tr></thead><tbody>{securityLogs.map((log) => <tr key={log.id}><td>{log.event}</td><td><span className="executive-soft-pill amber">{log.severity}</span></td><td>{log.ip_address ?? "—"}</td><td>{log.identifier_hash?.slice(0, 12) ?? "—"}</td><td>{new Date(log.created_at).toLocaleString(ar ? "ar-EG" : "en-US")}</td></tr>)}</tbody></table>{securityLogs.length === 0 && <p className="executive-empty-state">{ar ? "لا توجد أحداث أمنية مسجلة." : "No security events recorded."}</p>}</div></section></>}
+      {drawerStore && <div className="executive-drawer-backdrop" onClick={() => setDrawerStore(null)}><aside className="executive-drawer" onClick={(event) => event.stopPropagation()}><button className="executive-drawer-close" onClick={() => setDrawerStore(null)} type="button" aria-label={ar ? "إغلاق" : "Close"}>×</button><span className="executive-eyebrow">{ar ? "ملف المتجر" : "STORE PROFILE"}</span><h2>{drawerStore.store_name}</h2><p>{drawerStore.owner_name} · {drawerStore.owner_email}</p><p>{ar ? "القالب" : "Template"}: {drawerStore.template_slug} · {ar ? "الباقة" : "Plan"}: {drawerStore.plan}</p><button className="executive-primary" onClick={() => { setSelectedSlug(drawerStore.slug); setTab("studio"); setDrawerStore(null); }} type="button">{ar ? "فتح الاستوديو" : "Open studio"}</button><button className="executive-danger-link" onClick={() => { void setStoreStatus(drawerStore); setDrawerStore(null); }} type="button">{drawerStore.status === "suspended" ? (ar ? "تفعيل المتجر" : "Reactivate store") : (ar ? "إيقاف المتجر" : "Suspend store")}</button></aside></div>}
+        </main>
+      </div>    </section>
   );
 }
 
