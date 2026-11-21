@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\PlatformOwnerAccess;
 use App\Support\SecurityEventLogger;
 use Closure;
 use Illuminate\Http\Request;
@@ -13,12 +14,7 @@ class EnsurePlatformOwner
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        $ownerEmail = strtolower(trim((string) config('commerceforge.owner_email')));
-
-        $authorized = $user instanceof User
-                && $user->role === 'super_admin'
-                && $ownerEmail !== ''
-                && hash_equals($ownerEmail, strtolower($user->email));
+        $authorized = $user instanceof User && PlatformOwnerAccess::canManage($user);
 
         SecurityEventLogger::record(
             $request,

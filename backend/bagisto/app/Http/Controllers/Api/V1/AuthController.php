@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use App\Support\PlatformOwnerAccess;
+use App\Support\PlatformEventRecorder;
 use App\Support\SecurityEventLogger;
 use DomainException;
 use Firebase\JWT\JWK;
@@ -37,10 +39,11 @@ class AuthController extends Controller
             'name'     => trim($data['name']),
             'email'    => strtolower($data['email']),
             'password' => $data['password'],
-            'role'     => $this->roleFor($data['email']),
+            'role'     => 'merchant',
             'whatsapp_phone' => $data['whatsapp_phone'],
             'market' => $data['market'],
         ]);
+        app(PlatformEventRecorder::class)->record('new_signup', $user->id, null, $user->name, ['source' => 'email']);
 
         return $this->issueToken($user, 'storefront-registration', 201);
     }
@@ -93,8 +96,6 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($rateLimitKey);
-        $this->synchronizeRole($user);
-
         return $this->issueToken($user, 'storefront-login');
     }
 
@@ -103,9 +104,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         abort_unless($user instanceof User, 401);
-        $this->synchronizeRole($user);
-
-        return response()->json(['user' => $this->present($user)]);
+        return response()->json(['user' => $this->present($user, PlatformOwnerAccess::canManage($user))]);
     }
 
     public function logout(Request $request): JsonResponse
@@ -213,6 +212,7 @@ class AuthController extends Controller
 
         $registration = $request->session()->pull('commerceforge_google_registration');
         $user = User::query()->firstOrNew(['email' => $email]);
+        $isNewUser = ! $user->exists;
 
         if (! $user->exists) {
             $user->name = trim((string) $googleUser->getName()) ?: $email;
@@ -228,8 +228,10 @@ class AuthController extends Controller
         }
 
         $user->google_id = (string) $googleUser->getId();
-        $user->role = $this->roleFor($email);
+        $isPlatformOwner = PlatformOwnerAccess::isAllowedEmail($email);
+        $user->role = $isPlatformOwner ? 'super_admin' : 'merchant';
         $user->save();
+        if ($isNewUser) app(PlatformEventRecorder::class)->record('new_signup', $user->id, null, $user->name, ['source' => 'google_oauth']);
 
         if ($user->two_factor_enabled) {
             SecurityEventLogger::record(request(), 'login.oauth_two_factor_blocked', 'high', $user->id, $user->email);
@@ -239,7 +241,8 @@ class AuthController extends Controller
             );
         }
 
-        $token = $user->createToken('storefront-google-login')->plainTextToken;
+        $tokenName = $isPlatformOwner ? 'storefront-google-owner' : 'storefront-google-login';
+        $token = $user->createToken($tokenName)->plainTextToken;
         $code = Str::random(64);
         Cache::put('commerceforge_google_oauth:'.$code, $token, now()->addMinute());
 
@@ -264,7 +267,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user'  => $this->present($user),
+            'user'  => $this->present($user, $personalAccessToken->name === 'storefront-google-owner' && PlatformOwnerAccess::isAllowedEmail($user->email)),
         ]);
     }
 
@@ -336,7 +339,10 @@ class AuthController extends Controller
         );
 
         $existingUser = User::query()->where('email', $email)->first();
-        $role = $this->roleFor($email);
+        $isNewUser = $existingUser === null;
+        $googleProvider = ($claims->firebase->sign_in_provider ?? null) === 'google.com';
+        $isPlatformOwner = $googleProvider && PlatformOwnerAccess::isAllowedEmail($email);
+        $role = $isPlatformOwner ? 'super_admin' : 'merchant';
         $hasWhatsappPhoneColumn = Schema::hasColumn('users', 'whatsapp_phone');
         if ($existingUser?->two_factor_enabled) {
             if (! isset($data['two_factor_code'])) {
@@ -378,8 +384,15 @@ class AuthController extends Controller
                 ?? $data['market']
                 ?? 'EG';
         }
+        if ($googleProvider && Schema::hasColumn('users', 'firebase_uid')) {
+            $attributes['firebase_uid'] = $firebaseUid;
+        }
+        if ($googleProvider && Schema::hasColumn('users', 'google_id')) {
+            $attributes['google_id'] = $firebaseUid;
+        }
 
         $user = User::unguarded(fn () => User::updateOrCreate(['email' => $email], $attributes));
+        if ($isNewUser) app(PlatformEventRecorder::class)->record('new_signup', $user->id, null, $user->name, ['source' => 'firebase_google']);
         $extraAttributes = [];
         if (Schema::hasColumn('users', 'firebase_uid')) {
             $extraAttributes['firebase_uid'] = $firebaseUid;
@@ -398,46 +411,36 @@ class AuthController extends Controller
         $userData['whatsapp_phone'] = $userData['whatsappPhone'];
         $userData['has_store'] = (bool) $user->store_slug;
 
+        $tokenName = $isPlatformOwner ? 'commerceforge-google-owner' : 'commerceforge-web';
+
         return response()->json([
             'status' => 'ok',
-            'token' => $user->createToken('commerceforge-web')->plainTextToken,
-            'user' => $userData,
+            'token' => $user->createToken($tokenName)->plainTextToken,
+            'user' => [...$userData, 'role' => $role],
         ]);
     }
 
     private function issueToken(User $user, string $device, int $status = 200): JsonResponse
     {
+        $isManagerGoogleLogin = $device === 'storefront-google-owner'
+            && PlatformOwnerAccess::isAllowedEmail($user->email)
+            && (string) $user->google_id !== '';
+
         return response()->json([
             'token' => $user->createToken($device)->plainTextToken,
-            'user'  => $this->present($user),
+            'user'  => $this->present($user, $isManagerGoogleLogin),
         ], $status);
     }
 
-    private function synchronizeRole(User $user): void
-    {
-        $role = $this->roleFor($user->email);
-
-        if ($user->role !== $role) {
-            $user->forceFill(['role' => $role])->save();
-        }
-    }
-
-    private function roleFor(string $email): string
-    {
-        $ownerEmail = strtolower(trim((string) config('commerceforge.owner_email')));
-
-        return $ownerEmail !== '' && hash_equals($ownerEmail, strtolower($email))
-            ? 'super_admin'
-            : 'merchant';
-    }
-
-    private function present(User $user): array
+    private function present(User $user, bool $managerGoogleLogin = false): array
     {
         return [
             'id'        => $user->id,
             'name'      => $user->name,
             'email'     => $user->email,
-            'role'      => $user->role,
+            'role'      => $user->role === 'super_admin' && $managerGoogleLogin && PlatformOwnerAccess::isAllowedEmail($user->email)
+                ? 'super_admin'
+                : 'merchant',
             'memberRole' => $user->member_role,
             'storeSlug'  => $user->store_slug,
             'whatsappPhone' => $user->whatsapp_phone,

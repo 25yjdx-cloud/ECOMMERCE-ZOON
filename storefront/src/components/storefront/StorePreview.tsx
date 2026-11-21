@@ -52,6 +52,7 @@ export function StorePreview({
   const [category, setCategory] = useState<string>();
   const [cartOpen, setCartOpen] = useState(false);
   const [remotePayload, setRemotePayload] = useState(initialPayload);
+  const [managerPreview, setManagerPreview] = useState<Partial<Pick<StoreBuildPayload["config"], "store_name" | "store_name_en" | "hero_title" | "hero_title_en" | "hero_subtitle" | "hero_subtitle_en" | "hero_cta" | "hero_cta_en" | "primary_color" | "button_color" | "background_color" | "button_width" | "button_height" | "button_font_size" | "button_radius" | "trust_badges">>>({});
   const [payloadState, setPayloadState] = useState<"loading" | "ready" | "error">(
     initialPayload ? "ready" : "loading",
   );
@@ -95,6 +96,17 @@ export function StorePreview({
   const remoteShipping = remotePayload?.shipping;
   const storePaused = remotePayload?.paused ?? false;
 
+  useEffect(() => {
+    function onManagerPreview(event: MessageEvent) {
+      if (event.origin !== window.location.origin || !event.data || event.data.type !== "cf-manager-preview") return;
+      const config = event.data.config;
+      if (!config || typeof config !== "object") return;
+      setManagerPreview(config);
+    }
+    window.addEventListener("message", onManagerPreview);
+    return () => window.removeEventListener("message", onManagerPreview);
+  }, []);
+
   const productsData = useMemo<StorePayload["products"]>(
     () => remotePayload
       ? remotePayload.products.map((product) =>
@@ -106,10 +118,10 @@ export function StorePreview({
   const storePayload: StorePayload = {
     slug: storeSlug,
     template: preset.id,
-    storeName: remoteConfig?.store_name ?? storeName,
+    storeName: (locale === "en" ? managerPreview.store_name_en : managerPreview.store_name) ?? (locale === "en" ? remoteConfig?.store_name_en : remoteConfig?.store_name) ?? remoteConfig?.store_name ?? storeName,
     logoUrl: remoteConfig?.logo_url ?? null,
-    primaryColor: remoteConfig?.primary_color ?? template.accent,
-    backgroundColor: remoteConfig?.background_color ?? null,
+    primaryColor: managerPreview.primary_color ?? remoteConfig?.primary_color ?? template.accent,
+    backgroundColor: managerPreview.background_color ?? remoteConfig?.background_color ?? null,
     currency: remoteConfig?.market === "SA" ? "SAR" : "EGP",
     metaPixelId: remoteConfig?.meta_pixel_id ?? null,
     tiktokPixelId: remoteConfig?.tiktok_pixel_id ?? null,
@@ -174,8 +186,13 @@ export function StorePreview({
       dir={locale === "ar" ? "rtl" : "ltr"}
       style={{
         "--store-accent": storePayload.primaryColor,
+        "--store-button-color": managerPreview.button_color ?? remoteConfig?.button_color ?? storePayload.primaryColor,
+        "--store-button-width": `${managerPreview.button_width ?? remoteConfig?.button_width ?? 220}px`,
+        "--store-button-height": `${managerPreview.button_height ?? remoteConfig?.button_height ?? 52}px`,
+        "--store-button-font-size": `${managerPreview.button_font_size ?? remoteConfig?.button_font_size ?? 16}px`,
+        "--store-button-radius": `${managerPreview.button_radius ?? remoteConfig?.button_radius ?? 12}px`,
         accentColor: storePayload.primaryColor,
-        backgroundColor: storePayload.backgroundColor ?? undefined,
+        backgroundColor: managerPreview.background_color ?? storePayload.backgroundColor ?? undefined,
       } as CSSProperties}
     >
       <LocaleDocumentAttributes locale={locale} />
@@ -221,13 +238,13 @@ export function StorePreview({
       </header>
       <main>
         <section className={`store-hero store-hero-${preset.id}`}>
-          <h1>{(locale === "en" ? remoteConfig?.hero_title_en : remoteConfig?.hero_title) ?? remoteConfig?.hero_title ?? store.heroTitles[preset.id]}</h1>
-          <p>{(locale === "en" ? remoteConfig?.hero_subtitle_en : remoteConfig?.hero_subtitle) || store.heroTexts[preset.id]}</p>
-          <a className="button-link" href="#products">{(locale === "en" ? remoteConfig?.hero_cta_en : remoteConfig?.hero_cta) ?? remoteConfig?.hero_cta ?? store.shopNow}</a>
+          <h1>{(locale === "en" ? managerPreview.hero_title_en : managerPreview.hero_title) ?? (locale === "en" ? remoteConfig?.hero_title_en : remoteConfig?.hero_title) ?? remoteConfig?.hero_title ?? store.heroTitles[preset.id]}</h1>
+          <p>{(locale === "en" ? managerPreview.hero_subtitle_en : managerPreview.hero_subtitle) ?? (locale === "en" ? remoteConfig?.hero_subtitle_en : remoteConfig?.hero_subtitle) ?? store.heroTexts[preset.id]}</p>
+          <a className="button-link" href="#products">{(locale === "en" ? managerPreview.hero_cta_en : managerPreview.hero_cta) ?? (locale === "en" ? remoteConfig?.hero_cta_en : remoteConfig?.hero_cta) ?? remoteConfig?.hero_cta ?? store.shopNow}</a>
         </section>
-        {remoteConfig?.trust_badges?.length ? (
+        {(managerPreview.trust_badges ?? remoteConfig?.trust_badges)?.length ? (
           <ul className="store-trust-badges" aria-label={locale === "ar" ? "مميزات المتجر" : "Store benefits"}>
-            {remoteConfig.trust_badges.map((badge) => <li key={badge.en}>{badge[locale]}</li>)}
+            {(managerPreview.trust_badges ?? remoteConfig?.trust_badges ?? []).map((badge) => <li key={badge.en}>{badge[locale]}</li>)}
           </ul>
         ) : null}
         <div

@@ -13,7 +13,12 @@ export type StoreBuildPayload = {
     store_name_en?: string;
     logo_url?: string | null;
     primary_color?: string;
+    button_color?: string;
     background_color?: string | null;
+    button_width?: number;
+    button_height?: number;
+    button_font_size?: number;
+    button_radius?: number;
     mode?: "light" | "dark";
     hero_title?: string;
     hero_title_en?: string;

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\PlatformOwnerAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +15,7 @@ class EnsureStoreManager
     {
         $user = $request->user();
         $slug = (string) $request->route('slug');
-        $ownerEmail = strtolower(trim((string) config('commerceforge.owner_email')));
-        $isPlatformOwner = $user instanceof User
-            && $user->role === 'super_admin'
-            && $ownerEmail !== ''
-            && hash_equals($ownerEmail, strtolower($user->email));
+        $isPlatformOwner = $user instanceof User && PlatformOwnerAccess::canManage($user);
         $isStoreManager = $user instanceof User
             && $user->role === 'merchant'
             && in_array($user->member_role, ['owner', 'manager'], true)

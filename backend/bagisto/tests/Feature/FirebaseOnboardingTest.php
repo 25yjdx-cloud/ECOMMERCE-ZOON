@@ -124,6 +124,7 @@ class FirebaseOnboardingTest extends TestCase
             'email' => $email,
             'email_verified' => true,
             'name' => 'New Google Merchant',
+            'firebase' => ['sign_in_provider' => 'google.com'],
             'iat' => time(),
             'exp' => time() + 300,
         ], JSON_THROW_ON_ERROR));

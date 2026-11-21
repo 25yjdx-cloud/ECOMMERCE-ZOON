@@ -7,6 +7,7 @@ import { AiAssistantWidget } from "@/components/ai/AiAssistantWidget";
 import { Preloader } from "@/components/brand/Preloader";
 import { WelcomeModal } from "@/components/brand/WelcomeModal";
 import { HybridWorkflowModal } from "@/components/landing/HybridWorkflowModal";
+import { PlatformTelemetry } from "@/components/platform/PlatformTelemetry";
 import "./globals.css";
 
 const arabicFont = Cairo({
@@ -60,6 +61,7 @@ export default function RootLayout({
             <Preloader />
             <WelcomeModal />
             <HybridWorkflowModal />
+            <PlatformTelemetry />
             {children}
             <AiAssistantWidget />
           </CartProvider>

@@ -20,6 +20,7 @@ use App\Http\Requests\CommerceForge\UpdateStoreConfigRequest;
 use App\Models\User;
 use App\Repositories\CommerceForgeStoreRepository;
 use App\Services\CommerceForgeNotificationService;
+use App\Support\PlatformEventRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,7 @@ class CommerceForgeController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        app(PlatformEventRecorder::class)->record('return_requested', null, $slug, $data['order_number']);
 
         return response()->json(['data' => ['id' => $id, 'status' => 'new']], 201);
     }
@@ -263,6 +265,8 @@ class CommerceForgeController extends Controller
         });
 
         $this->notifications->storeCreated($storeId, $data['store_slug'], $user->id, trim($data['store_name']));
+        app(PlatformEventRecorder::class)->record('store_generated', $user->id, $data['store_slug'], trim($data['store_name']), ['template' => $data['template_slug'], 'plan' => 'free']);
+        app(PlatformEventRecorder::class)->record('plan_free_activated', $user->id, $data['store_slug'], trim($data['store_name']));
 
         return response()->json([
             'data' => [
@@ -627,6 +631,7 @@ class CommerceForgeController extends Controller
             $result['orderNumber'],
             $result['total'],
         );
+        app(PlatformEventRecorder::class)->record('order_created', null, $data['storeSlug'], $result['orderNumber'], ['amount' => $result['total']]);
 
         return response()->json($result, 201);
     }
@@ -643,9 +648,10 @@ class CommerceForgeController extends Controller
 
     private function storeIsPaused(object $store): bool
     {
-        return $store->subscription_status !== 'active'
+        return $store->subscription_status === 'suspended'
+            || ($store->subscription_status !== 'active'
             && $store->trial_ends_at !== null
-            && now()->greaterThanOrEqualTo($store->trial_ends_at);
+            && now()->greaterThanOrEqualTo($store->trial_ends_at));
     }
 
     private function shippingSettingsForStore(object $store): array

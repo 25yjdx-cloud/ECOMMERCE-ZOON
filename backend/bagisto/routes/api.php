@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AiAssistantController;
 use App\Http\Controllers\Api\V1\CommerceForgeController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PlatformTelemetryController;
+use App\Http\Controllers\Api\V1\PlatformIntegrationController;
 use App\Http\Controllers\Api\V1\ShippingController;
 use App\Http\Middleware\EnsurePlatformOwner;
 use App\Http\Middleware\EnsureOwnsStore;
@@ -11,6 +13,7 @@ use App\Http\Middleware\EnsureStoreManager;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
+    Route::post('/telemetry/heartbeat', [PlatformTelemetryController::class, 'heartbeat'])->middleware('throttle:60,1');
     Route::get('/templates', [CommerceForgeController::class, 'templates']);
     Route::get('/templates/{slug}', [CommerceForgeController::class, 'template']);
     Route::get('/stores/{slug}/config', [CommerceForgeController::class, 'storeConfig']);
@@ -33,6 +36,15 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
         ->post('/merchant/stores', [CommerceForgeController::class, 'createMerchantStore']);
 
     Route::middleware(['auth:sanctum', EnsurePlatformOwner::class])->group(function () {
+        Route::get('/admin/live-radar', [PlatformTelemetryController::class, 'radar']);
+        Route::get('/admin/events', [PlatformTelemetryController::class, 'events']);
+        Route::get('/admin/audit', [PlatformTelemetryController::class, 'audit']);
+        Route::get('/admin/stores', [PlatformTelemetryController::class, 'stores']);
+        Route::get('/admin/templates', [PlatformTelemetryController::class, 'templates']);
+        Route::patch('/admin/templates/{slug}', [PlatformTelemetryController::class, 'updateTemplate']);
+        Route::put('/admin/stores/{slug}/visual-config', [PlatformTelemetryController::class, 'updateStore']);
+        Route::match(['get', 'put', 'post'], '/admin/integrations/google-sheets', [PlatformIntegrationController::class, 'googleSheets']);
+        Route::get('/admin/exports/{dataset}', [PlatformIntegrationController::class, 'export']);
         Route::get('/quote-requests', [CommerceForgeController::class, 'quotes']);
         Route::post('/stores/{slug}/clone', [CommerceForgeController::class, 'cloneStore']);
         Route::get('/admin/refinement-queue', [CommerceForgeController::class, 'refinementQueue']);

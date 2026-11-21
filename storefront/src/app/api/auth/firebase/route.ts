@@ -64,7 +64,6 @@ export async function POST(request: Request) {
   }
 
   const email = claims.email.trim().toLowerCase();
-  const ownerEmail = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
   const backendBaseUrl = process.env.BACKEND_URL || process.env.BAGISTO_API_URL || "http://127.0.0.1:8001";
   const backendUrl = new URL("api/v1/auth/firebase", backendBaseUrl.endsWith("/") ? backendBaseUrl : `${backendBaseUrl}/`);
   const controller = new AbortController();
@@ -141,7 +140,7 @@ export async function POST(request: Request) {
   }
 
   const backendUser = payload.user;
-  const isOwner = email === ownerEmail || (ownerEmail === "" && backendUser.role === "super_admin");
+  const isOwner = backendUser.role === "super_admin";
   const redirectTo = getPostLoginPath(backendUser);
   const user = { ...backendUser, isOwner };
   const result = NextResponse.json({ status: "ok", user, redirectTo });

@@ -10,6 +10,7 @@ import { getLocale, type QueryValues } from "@/i18n/locale";
 import { PRESET_IDS, getPreset } from "@/lib/presets";
 import { getAuthToken, getAuthUser, getBackendAuthUrl } from "@/lib/auth";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { ExecutiveConsole } from "@/components/manager/ExecutiveConsole";
 
 type RefinementStore = {
   slug: string;
@@ -66,9 +67,8 @@ export default async function PlatformManagerPage({ searchParams }: { searchPara
   const isArabic = locale === "ar";
   const user = await getAuthUser();
 
-  if (!user || user.role !== "super_admin") {
-    redirect(`/login?lang=${locale}&redirect=%2Fmanager`);
-  }
+  if (!user) redirect(`/login?lang=${locale}&redirect=%2Fmanager`);
+  if (user.role !== "super_admin") redirect(`/dashboard?lang=${locale}`);
   const token = await getAuthToken();
   if (!token) redirect(`/login?lang=${locale}&redirect=%2Fmanager`);
   const queueResponse = await fetch(getBackendAuthUrl("api/v1/admin/refinement-queue"), {
@@ -100,6 +100,7 @@ export default async function PlatformManagerPage({ searchParams }: { searchPara
     <div lang={locale} dir={isArabic ? "rtl" : "ltr"}>
       <LandingHeader basePath="/manager" dictionary={getDictionary(locale)} locale={locale} query={query} user={user} />
       <main className="manager-page page-shell">
+        <ExecutiveConsole locale={locale} />
         <header className="manager-heading">
           <div>
             <BrandLogo className="manager-brand-logo" size={48} variant="horizontal" />

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const sensitivePath = /^\/(?:\.env(?:\..*)?|\.git(?:\/.*)?|backups(?:\/.*)?|.*\.(?:sql|bak)|composer\.json)(?:\/|$)/i;
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (sensitivePath.test(pathname)) {
@@ -19,11 +19,32 @@ export function proxy(request: NextRequest) {
     || pathname.startsWith("/admin");
 
   if (protectedPage) {
-    if (!request.cookies.has("commerceforge_auth")) {
+    const token = request.cookies.get("commerceforge_auth")?.value;
+    if (!token) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
 
       return NextResponse.redirect(loginUrl);
+    }
+
+    if (pathname.startsWith("/manager") || pathname.startsWith("/admin")) {
+      const backendBaseUrl = process.env.BACKEND_URL || process.env.BAGISTO_API_URL || "http://127.0.0.1:8001";
+      const backendUrl = new URL("api/v1/auth/me", backendBaseUrl.endsWith("/") ? backendBaseUrl : `${backendBaseUrl}/`);
+      try {
+        const response = await fetch(backendUrl, {
+          headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+          cache: "no-store",
+          signal: AbortSignal.timeout(3500),
+        });
+        const payload: unknown = response.ok ? await response.json() : null;
+        const role = payload && typeof payload === "object" && "user" in payload
+          && payload.user && typeof payload.user === "object" && "role" in payload.user
+          ? payload.user.role
+          : null;
+        if (role !== "super_admin") return NextResponse.redirect(new URL("/dashboard", request.url));
+      } catch {
+        return new NextResponse("Manager access verification is temporarily unavailable.", { status: 503 });
+      }
     }
   }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\PlatformOwnerAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,11 +14,7 @@ class EnsureOwnsStore
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        $ownerEmail = strtolower(trim((string) config('commerceforge.owner_email')));
-        $isPlatformOwner = $user instanceof User
-            && $user->role === 'super_admin'
-            && $ownerEmail !== ''
-            && hash_equals($ownerEmail, strtolower($user->email));
+        $isPlatformOwner = $user instanceof User && PlatformOwnerAccess::canManage($user);
         $isStoreOwner = $user instanceof User
             && $user->role === 'merchant'
             && is_string($user->store_slug)
