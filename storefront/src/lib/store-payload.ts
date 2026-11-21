@@ -10,13 +10,22 @@ export type StoreBuildPayload = {
   trial_ends_at: string | null;
   config: {
     store_name?: string;
+    store_name_en?: string;
     logo_url?: string | null;
     primary_color?: string;
     background_color?: string | null;
     mode?: "light" | "dark";
     hero_title?: string;
+    hero_title_en?: string;
     hero_subtitle?: string;
+    hero_subtitle_en?: string;
     hero_cta?: string;
+    hero_cta_en?: string;
+    store_niche?: "clothing" | "electronics" | "beauty" | "food" | "general";
+    description_ar?: string;
+    description_en?: string;
+    trust_badges?: Array<{ ar: string; en: string }>;
+    returns_policy?: { ar: string; en: string };
     market?: "EG" | "SA";
     meta_pixel_id?: string | null;
     tiktok_pixel_id?: string | null;

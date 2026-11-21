@@ -215,11 +215,9 @@ class AuthController extends Controller
         $user = User::query()->firstOrNew(['email' => $email]);
 
         if (! $user->exists) {
-            if ($this->roleFor($email) === 'merchant' && ! is_array($registration)) {
-                return redirect()->away(rtrim(config('commerceforge.storefront_url'), '/').'/login?notice=contact-required');
-            }
             $user->name = trim((string) $googleUser->getName()) ?: $email;
             $user->password = Hash::make(Str::random(64));
+            $user->market = 'EG';
             if (is_array($registration)) {
                 $user->whatsapp_phone = $registration['whatsapp_phone'];
                 $user->market = $registration['market'];
@@ -340,13 +338,6 @@ class AuthController extends Controller
         $existingUser = User::query()->where('email', $email)->first();
         $role = $this->roleFor($email);
         $hasWhatsappPhoneColumn = Schema::hasColumn('users', 'whatsapp_phone');
-        if ($existingUser && $hasWhatsappPhoneColumn && $role !== 'super_admin' && $existingUser->whatsapp_phone === null && ! isset($data['whatsapp_phone'], $data['market'])) {
-            return response()->json([
-                'message' => 'أدخل رقم واتساب والسوق لإكمال إنشاء الحساب.',
-                'whatsapp_required' => true,
-            ], 422);
-        }
-
         if ($existingUser?->two_factor_enabled) {
             if (! isset($data['two_factor_code'])) {
                 return response()->json([

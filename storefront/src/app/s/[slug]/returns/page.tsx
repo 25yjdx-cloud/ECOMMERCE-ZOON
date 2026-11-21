@@ -24,14 +24,16 @@ export default async function StoreReturnsPage({
   if (!payload) notFound();
 
   const locale: MockLocale = getLocale(query.lang);
-  const name = payload.config.store_name ?? slug;
+  const name = (locale === "en" ? payload.config.store_name_en : payload.config.store_name) ?? payload.config.store_name ?? slug;
   const isArabic = locale === "ar";
+  const returnPolicy = payload.config.returns_policy?.[locale];
 
   return (
     <StorefrontPageShell locale={locale} slug={slug} storeName={name} user={user}>
       <section className="order-tracking-page">
         <span className="eyebrow">{isArabic ? "خدمة العملاء" : "Customer service"}</span>
         <h1>{isArabic ? "الاستبدال والاسترجاع" : "Returns & exchange"}</h1>
+        {returnPolicy && <p className="dashboard-description">{returnPolicy}</p>}
         <ReturnRequestForm locale={locale} slug={slug} />
       </section>
     </StorefrontPageShell>

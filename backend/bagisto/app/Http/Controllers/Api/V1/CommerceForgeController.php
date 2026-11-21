@@ -193,6 +193,11 @@ class CommerceForgeController extends Controller
         abort_if($user->store_slug !== null, 409, 'This account already has a store.');
 
         $data = $request->validated();
+        $profile = $this->storeBuilderProfile($data['niche']);
+        $data['template_slug'] = $data['template_slug'] ?? $profile['template_slug'];
+        $data['primary_color'] = $data['primary_color'] ?? $profile['primary_color'];
+        $data['hosting_mode'] = $data['hosting_mode'] ?? 'saas';
+        $data['store_slug'] = $this->availableStoreSlug($data['store_name'], $user->id, $data['store_slug'] ?? null);
         $data['domain_mode'] = $data['hosting_mode'] === 'saas' ? 'subdomain' : 'custom';
         $trialEndsAt = now()->addDays(14);
 
@@ -203,11 +208,29 @@ class CommerceForgeController extends Controller
         );
         $source = DB::table('cf_stores')->where('slug', $data['template_slug'])->first();
         abort_unless($source, 404);
+        $storeName = trim($data['store_name']);
+        $description = trim($data['description']);
 
         $config = array_replace_recursive(json_decode($source->config, true, flags: JSON_THROW_ON_ERROR), [
-            'store_name' => trim($data['store_name']),
+            'store_name' => $storeName,
+            'store_name_en' => $storeName,
+            'store_niche' => $data['niche'],
+            'description_ar' => $description,
+            'description_en' => $profile['description_en'],
             'logo_url' => $data['logo_url'] ?? null,
             'primary_color' => $data['primary_color'],
+            'background_color' => $profile['background_color'],
+            'hero_title' => mb_substr($storeName.' — '.$profile['hero_title_ar'], 0, 180),
+            'hero_title_en' => mb_substr($storeName.' — '.$profile['hero_title_en'], 0, 180),
+            'hero_subtitle' => $description,
+            'hero_subtitle_en' => $profile['hero_subtitle_en'],
+            'hero_cta' => 'تسوق الآن',
+            'hero_cta_en' => 'Shop now',
+            'trust_badges' => $profile['trust_badges'],
+            'returns_policy' => [
+                'ar' => $profile['returns_policy_ar'],
+                'en' => $profile['returns_policy_en'],
+            ],
             'whatsapp' => $data['whatsapp'],
             'plan' => 'free',
             'market' => $data['market'],
@@ -253,6 +276,90 @@ class CommerceForgeController extends Controller
                 'developer_refinement_status' => $config['developer_refinement_status'],
             ],
         ], 201);
+    }
+
+    private function availableStoreSlug(string $storeName, int $userId, ?string $requestedSlug): string
+    {
+        $baseSlug = Str::slug($requestedSlug ?: $storeName);
+        $baseSlug = trim(Str::limit($baseSlug, 42, ''), '-');
+        if ($baseSlug === '') {
+            $baseSlug = 'store-'.$userId;
+        }
+
+        $slug = $baseSlug;
+        $suffix = 2;
+        while (DB::table('cf_stores')->where('slug', $slug)->exists()) {
+            $slug = Str::limit($baseSlug, 42, '').'-'.$suffix;
+            $suffix++;
+        }
+
+        return $slug;
+    }
+
+    private function storeBuilderProfile(string $niche): array
+    {
+        return match ($niche) {
+            'clothing' => [
+                'template_slug' => 'fashion',
+                'primary_color' => '#9B5178',
+                'background_color' => '#FFF7FA',
+                'hero_title_ar' => 'أناقة تعبّر عنك',
+                'hero_title_en' => 'Style that feels like you',
+                'hero_subtitle_en' => 'Discover thoughtfully selected styles for every day and every occasion.',
+                'description_en' => 'A considered collection of clothing and accessories, selected to make getting dressed feel effortless.',
+                'trust_badges' => [['ar' => 'خامات مختارة', 'en' => 'Selected materials'], ['ar' => 'مقاسات واضحة', 'en' => 'Clear sizing'], ['ar' => 'شحن موثوق', 'en' => 'Reliable delivery']],
+                'returns_policy_ar' => 'يمكنك طلب الاستبدال أو الاسترجاع خلال 14 يوماً من الاستلام، وفق حالة المنتج.',
+                'returns_policy_en' => 'Request an exchange or return within 14 days of delivery, subject to the product condition.',
+            ],
+            'electronics' => [
+                'template_slug' => 'classic',
+                'primary_color' => '#3156A3',
+                'background_color' => '#F3F7FF',
+                'hero_title_ar' => 'تقنية أسهل لحياتك',
+                'hero_title_en' => 'Technology made simpler',
+                'hero_subtitle_en' => 'Explore dependable devices and useful technology, chosen for everyday life.',
+                'description_en' => 'A practical selection of useful devices and accessories with clear product details and dependable support.',
+                'trust_badges' => [['ar' => 'منتجات موثوقة', 'en' => 'Trusted products'], ['ar' => 'مواصفات واضحة', 'en' => 'Clear specifications'], ['ar' => 'دعم بعد البيع', 'en' => 'After-sales support']],
+                'returns_policy_ar' => 'يمكنك طلب الاستبدال أو الاسترجاع خلال 14 يوماً، مع إرفاق المنتج وملحقاته الأصلية.',
+                'returns_policy_en' => 'Request an exchange or return within 14 days with the product and its original accessories.',
+            ],
+            'beauty' => [
+                'template_slug' => 'nabd',
+                'primary_color' => '#B85F7E',
+                'background_color' => '#FFF7FA',
+                'hero_title_ar' => 'عناية تليق بك',
+                'hero_title_en' => 'Care made for you',
+                'hero_subtitle_en' => 'Find thoughtful beauty and personal-care essentials for your daily routine.',
+                'description_en' => 'A carefully selected range of beauty and personal-care products to make everyday routines feel special.',
+                'trust_badges' => [['ar' => 'اختيارات بعناية', 'en' => 'Thoughtfully chosen'], ['ar' => 'تفاصيل موثوقة', 'en' => 'Trusted details'], ['ar' => 'تجربة سهلة', 'en' => 'Easy shopping']],
+                'returns_policy_ar' => 'تُقبل طلبات الاستبدال أو الاسترجاع خلال 14 يوماً للمنتجات غير المفتوحة والمحتفظة بتغليفها.',
+                'returns_policy_en' => 'Exchange or return requests are accepted within 14 days for unopened products in their original packaging.',
+            ],
+            'food' => [
+                'template_slug' => 'local-brand',
+                'primary_color' => '#557A3E',
+                'background_color' => '#F7F8EF',
+                'hero_title_ar' => 'مذاق طازج كل يوم',
+                'hero_title_en' => 'Fresh choices, every day',
+                'hero_subtitle_en' => 'Discover fresh, carefully prepared selections made for sharing and enjoying.',
+                'description_en' => 'Freshly selected food and pantry favourites, prepared with care and delivered with attention.',
+                'trust_badges' => [['ar' => 'تحضير بعناية', 'en' => 'Carefully prepared'], ['ar' => 'مكونات واضحة', 'en' => 'Clear ingredients'], ['ar' => 'توصيل موثوق', 'en' => 'Reliable delivery']],
+                'returns_policy_ar' => 'لضمان سلامة المنتجات الغذائية، تواصل معنا فور الاستلام عند وجود تلف أو خطأ في الطلب.',
+                'returns_policy_en' => 'For food safety, contact us promptly after delivery if an item is damaged or your order is incorrect.',
+            ],
+            default => [
+                'template_slug' => 'classic',
+                'primary_color' => '#D9541E',
+                'background_color' => '#F7F3EC',
+                'hero_title_ar' => 'اختيارات تناسب يومك',
+                'hero_title_en' => 'Good finds for every day',
+                'hero_subtitle_en' => 'Explore useful, carefully selected products with an easy and reliable shopping experience.',
+                'description_en' => 'A versatile collection of useful finds, selected to make everyday shopping easier.',
+                'trust_badges' => [['ar' => 'اختيارات موثوقة', 'en' => 'Trusted selection'], ['ar' => 'دفع آمن', 'en' => 'Secure checkout'], ['ar' => 'شحن موثوق', 'en' => 'Reliable delivery']],
+                'returns_policy_ar' => 'يمكنك طلب الاستبدال أو الاسترجاع خلال 14 يوماً من الاستلام، وفق حالة المنتج.',
+                'returns_policy_en' => 'Request an exchange or return within 14 days of delivery, subject to the product condition.',
+            ],
+        };
     }
 
     private function duplicateStoreContents(object $source, string $slug, int $ownerId, array $config): int

@@ -121,16 +121,7 @@ const mode = initialMode;
   function getGoogleRegistrationUrl(): string | null {
     setError("");
     if (mode !== "register") return "/api/auth/google?mode=login";
-    if (!whatsappPhone || normalizedPhone.length < (market === "EG" ? 10 : 9)) {
-      setError(locale === "ar" ? "أدخل رقم واتساب صحيحاً أولاً." : "Enter a valid WhatsApp number first.");
-      return null;
-    }
-
-    return `/api/auth/google?${new URLSearchParams({
-      mode: "register",
-      whatsapp_phone: internationalPhone,
-      market,
-    }).toString()}`;
+    return "/api/auth/google?mode=login";
   }
 
   async function signInWithFirebase() {

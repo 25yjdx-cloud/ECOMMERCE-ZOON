@@ -221,10 +221,15 @@ export function StorePreview({
       </header>
       <main>
         <section className={`store-hero store-hero-${preset.id}`}>
-          <h1>{remoteConfig?.hero_title ?? store.heroTitles[preset.id]}</h1>
-          <p>{remoteConfig?.hero_subtitle || store.heroTexts[preset.id]}</p>
-          <a className="button-link" href="#products">{remoteConfig?.hero_cta ?? store.shopNow}</a>
+          <h1>{(locale === "en" ? remoteConfig?.hero_title_en : remoteConfig?.hero_title) ?? remoteConfig?.hero_title ?? store.heroTitles[preset.id]}</h1>
+          <p>{(locale === "en" ? remoteConfig?.hero_subtitle_en : remoteConfig?.hero_subtitle) || store.heroTexts[preset.id]}</p>
+          <a className="button-link" href="#products">{(locale === "en" ? remoteConfig?.hero_cta_en : remoteConfig?.hero_cta) ?? remoteConfig?.hero_cta ?? store.shopNow}</a>
         </section>
+        {remoteConfig?.trust_badges?.length ? (
+          <ul className="store-trust-badges" aria-label={locale === "ar" ? "مميزات المتجر" : "Store benefits"}>
+            {remoteConfig.trust_badges.map((badge) => <li key={badge.en}>{badge[locale]}</li>)}
+          </ul>
+        ) : null}
         <div
           className="template-module-wrap"
           style={{ backgroundColor: storePayload.backgroundColor ?? template.surface }}
@@ -235,7 +240,7 @@ export function StorePreview({
           <div className="section-heading">
             <div>
               <span className="eyebrow">{store.products}</span>
-              <h2 id="products-heading">{remoteConfig?.store_name ?? storeName}</h2>
+              <h2 id="products-heading">{(locale === "en" ? remoteConfig?.store_name_en : remoteConfig?.store_name) ?? remoteConfig?.store_name ?? storeName}</h2>
             </div>
           </div>
           <div className={`gallery-filters gallery-filters-${preset.id}`} role="group" aria-label={store.allCategories}>

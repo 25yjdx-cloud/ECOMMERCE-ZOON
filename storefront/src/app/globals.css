@@ -1076,6 +1076,20 @@ button {
   opacity: 0.9;
 }
 
+.store-trust-badges {
+  max-width: 76rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem 1.5rem;
+  list-style: none;
+  margin: 0 auto;
+  padding: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .store-hero .button-link {
   width: fit-content;
   border-color: var(--white);
@@ -3857,7 +3871,7 @@ html[data-theme="dark"] .manager-connection {
   background: linear-gradient(110deg, #fff0b3 0%, #f5bf4f 48%, #d88a1c 100%);
   background-clip: text;
   color: transparent;
-  font-size: clamp(2.25rem, 4vw, 3rem);
+  font-size: clamp(3rem, 6vw, 4.5rem);
   font-weight: 900;
   letter-spacing: -0.045em;
   line-height: 1.02;

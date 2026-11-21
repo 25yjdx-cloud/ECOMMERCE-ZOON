@@ -36,7 +36,7 @@ class NotificationController extends Controller
                 'cf_notifications.created_at',
                 DB::raw($locale === 'ar' ? 'cf_notifications.title_ar as title' : 'cf_notifications.title_en as title'),
                 DB::raw($locale === 'ar' ? 'cf_notifications.body_ar as body' : 'cf_notifications.body_en as body'),
-                DB::raw('reads.id is not null as read'),
+                DB::raw('reads.id is not null as is_read'),
             ])
             ->orderByDesc('cf_notifications.id')
             ->limit(50)
@@ -47,7 +47,7 @@ class NotificationController extends Controller
                 'title' => $item->title,
                 'body' => $item->body,
                 'created_at' => $item->created_at,
-                'read' => (bool) $item->read,
+                'read' => (bool) $item->is_read,
             ]);
 
         return response()->json(['data' => $data, 'unread_count' => $unreadCount]);
