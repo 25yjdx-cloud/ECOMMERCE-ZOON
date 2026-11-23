@@ -64,6 +64,13 @@ export default async function ManagerPage({ params, searchParams }: ManagerPageP
             <p>{dictionary.manager.intro}</p>
           </div>
         </div>
+        {process.env.NODE_ENV === "development" && (
+          <section className="dev-build-indicator" role="status">
+            <span>main</span>
+            <span>3006</span>
+            <span>API 8001</span>
+          </section>
+        )}
         <section className="manager-connection" role="status">
           <span aria-hidden="true" className="manager-status-mark">!</span>
           <div>

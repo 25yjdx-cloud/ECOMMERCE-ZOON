@@ -12,7 +12,7 @@ class PlatformEventRecorder
     private const TYPES = [
         'new_signup', 'plan_free_activated', 'plan_paid_confirmed', 'store_generated',
         'template_generated', 'order_created', 'return_requested',
-        'store_visual_updated', 'store_suspended', 'store_activated', 'template_status_changed',
+        'store_visual_updated', 'store_suspended', 'store_activated', 'template_status_changed', 'plan_upgrade_requested',
     ];
 
     public function record(string $type, ?int $actorId = null, ?string $storeSlug = null, ?string $subject = null, array $metadata = []): void

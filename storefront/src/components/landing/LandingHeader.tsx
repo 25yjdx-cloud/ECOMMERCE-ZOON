@@ -12,7 +12,6 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { MarketSwitcher } from "./MarketSwitcher";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { WorldQuickSwitcher } from "@/components/platform/WorldQuickSwitcher";
 
 type LandingHeaderProps = {
   locale: MockLocale;
@@ -55,7 +54,7 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
   const accountLabel = locale === "ar" ? "إعدادات الحساب" : "Account settings";
   const notificationsLabel = locale === "ar" ? "الإشعارات" : "Notifications";
   const storeLabel = user?.storeSlug
-    ? locale === "ar" ? "لوحة متجري" : "My store"
+    ? locale === "ar" ? "زيارة متجري" : "Visit my store"
     : locale === "ar" ? "أنشئ متجرك" : "Create your store";
   const menuLabel = locale === "ar" ? "القائمة الرئيسية" : "Main navigation";
 
@@ -106,7 +105,6 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
           {locale === "ar" ? "EN" : "عربي"}
         </Link>
         {user && <NotificationBell buttonClassName="navbar-icon-button navbar-notifications" locale={locale} />}
-        <WorldQuickSwitcher locale={locale} storeSlug={user?.storeSlug ?? undefined} user={user} />
         {user && <LogoutButton label={nav.logout} locale={locale} />}
         <Link className="navbar-account-pill" href={user ? accountHref : withLocale("/login")}>
           <UserRound aria-hidden="true" size={16} />
@@ -163,7 +161,7 @@ export function LandingHeader({ locale, dictionary, user, basePath = "/", query 
             <Link href={homeHref} onClick={() => setMenuOpen(false)}><House aria-hidden="true" size={19} />{locale === "ar" ? "الرئيسية" : "Home"}</Link>
             <Link href={templatesHref} onClick={() => setMenuOpen(false)}><Store aria-hidden="true" size={19} />{locale === "ar" ? "معرض القوالب" : "Template gallery"}</Link>
             <Link href={pricingHref} onClick={() => setMenuOpen(false)}><CreditCard aria-hidden="true" size={19} />{nav.pricing}</Link>
-            <Link href={user?.storeSlug ? withLocale("/dashboard/my-store") : withLocale("/launch")} onClick={() => setMenuOpen(false)}><Store aria-hidden="true" size={19} />{storeLabel}</Link>
+            <Link href={user?.storeSlug ? withLocale(`/s/${encodeURIComponent(user.storeSlug)}`) : withLocale("/launch")} onClick={() => setMenuOpen(false)}><Store aria-hidden="true" size={19} />{storeLabel}</Link>
             <Link href={contactHref} onClick={() => setMenuOpen(false)}><MessageCircle aria-hidden="true" size={19} />{nav.contact}</Link>
           </nav>
           <div className="mobile-drawer-footer">

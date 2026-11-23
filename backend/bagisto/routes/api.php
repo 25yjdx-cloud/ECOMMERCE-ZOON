@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PlatformTelemetryController;
 use App\Http\Controllers\Api\V1\PlatformIntegrationController;
 use App\Http\Controllers\Api\V1\ShippingController;
+use App\Http\Controllers\Api\V1\MerchantWorkspaceController;
 use App\Http\Middleware\EnsurePlatformOwner;
 use App\Http\Middleware\EnsureOwnsStore;
 use App\Http\Middleware\EnsureStoreManager;
+use App\Http\Middleware\EnsureMerchantWorkspace;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
@@ -32,6 +34,43 @@ Route::prefix('v1')->middleware('throttle:120,1')->group(function () {
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     });
+    Route::middleware(['auth:sanctum', EnsureMerchantWorkspace::class, 'throttle:60,1'])
+        ->prefix('merchant')
+        ->group(function () {
+            Route::get('/search', [MerchantWorkspaceController::class, 'search']);
+            Route::get('/orders', [MerchantWorkspaceController::class, 'orders']);
+            Route::post('/orders', [MerchantWorkspaceController::class, 'createOrder']);
+            Route::patch('/orders/{order}', [MerchantWorkspaceController::class, 'updateOrder']);
+            Route::post('/orders/{order}/waybill', [MerchantWorkspaceController::class, 'createWaybill']);
+            Route::get('/returns', [MerchantWorkspaceController::class, 'returns']);
+            Route::patch('/returns/{return}', [MerchantWorkspaceController::class, 'updateReturn']);
+            Route::get('/products', [MerchantWorkspaceController::class, 'products']);
+            Route::post('/products', [MerchantWorkspaceController::class, 'saveProduct']);
+            Route::put('/products/{product}', [MerchantWorkspaceController::class, 'updateProduct']);
+            Route::delete('/products/{product}', [MerchantWorkspaceController::class, 'deleteProduct']);
+            Route::get('/collections', [MerchantWorkspaceController::class, 'collections']);
+            Route::post('/collections', [MerchantWorkspaceController::class, 'createCollection']);
+            Route::put('/collections/{collection}', [MerchantWorkspaceController::class, 'updateCollection']);
+            Route::delete('/collections/{collection}', [MerchantWorkspaceController::class, 'deleteCollection']);
+            Route::get('/files', [MerchantWorkspaceController::class, 'files']);
+            Route::post('/files', [MerchantWorkspaceController::class, 'uploadFile']);
+            Route::delete('/files/{file}', [MerchantWorkspaceController::class, 'deleteFile']);
+            Route::get('/storefront', [MerchantWorkspaceController::class, 'storefront']);
+            Route::put('/storefront', [MerchantWorkspaceController::class, 'updateStorefront']);
+            Route::post('/storefront/domain/verify', [MerchantWorkspaceController::class, 'verifyDomain']);
+            Route::post('/storefront/review-request', [MerchantWorkspaceController::class, 'requestRefinement']);
+            Route::get('/analytics', [MerchantWorkspaceController::class, 'analytics']);
+            Route::get('/coupons', [MerchantWorkspaceController::class, 'coupons']);
+            Route::post('/coupons', [MerchantWorkspaceController::class, 'coupons']);
+            Route::patch('/coupons/{coupon}', [MerchantWorkspaceController::class, 'coupons']);
+            Route::delete('/coupons/{coupon}', [MerchantWorkspaceController::class, 'coupons']);
+            Route::get('/staff', [MerchantWorkspaceController::class, 'staff']);
+            Route::post('/staff', [MerchantWorkspaceController::class, 'staff']);
+            Route::delete('/staff/{staff}', [MerchantWorkspaceController::class, 'staff']);
+            Route::post('/plan-upgrade', [MerchantWorkspaceController::class, 'planUpgrade']);
+        });
+    Route::middleware(['auth:sanctum', 'throttle:20,1'])
+        ->post('/merchant/staff/accept/{token}', [MerchantWorkspaceController::class, 'acceptStaffInvite']);
     Route::middleware('auth:sanctum')
         ->post('/merchant/stores', [CommerceForgeController::class, 'createMerchantStore']);
 
